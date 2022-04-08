@@ -5,6 +5,7 @@
 #include<Eigen/Dense>
 #include<map>
 #include<unordered_map>
+#include <random>
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
@@ -12,6 +13,8 @@
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 #include "multiagent_slam/map2D.h"
+#include "multiagent_slam/gpModel.h"
+
 
 
 using namespace Eigen;
@@ -139,6 +142,25 @@ double euclidDist(double x1, double y1, double x2, double y2) {
 }
 
 
+std::vector<int8_t> getDistGrid(Eigen::MatrixXd X_test, Eigen::VectorXd Y_mean ,double resolution, double xLimit, double yLimit) {
+    std::vector<int8_t> grr(6000*6000,-1);
+    int numX = xLimit/resolution;
+    int numY = yLimit/resolution;
+    int num = X_test.rows();
+    std::cout<<num<<"\n";
+    double yMin = 0.0, yMax = 0.0;
+    for(int i=0;i<num;i++) {
+        yMin = std::min(yMin,Y_mean(i));
+        yMax = std::max(yMax,Y_mean(i));
+    }
+    std::cout<<yMin<<" "<<yMax<<"\n";
+    for(int i=0;i<num;i++) {
+        grr[int(X_test(i,0) + numX)*6000 + int(X_test(i,1) + numY)] = int8_t(100*(Y_mean(i) - yMin)/(yMax-yMin));
+    }
+    return grr;
+}
+
+
 int main(int argc, char** argv){
   ros::init(argc, argv, "laser_scan_publisher");
   ros::NodeHandle n;
@@ -213,26 +235,25 @@ int main(int argc, char** argv){
 
 
   world_T_map.setOrigin( tf::Vector3(0.0, 0.0, 0.0) );
-  tf::Quaternion w_q_m;
-  w_q_m.setRPY( 0, 0, 0 );  
-  world_T_map.setRotation( w_q_m);
-  br.sendTransform(tf::StampedTransform(world_T_map, ros::Time::now(), "world","map" ));
-
-  map2D map_2d(0.0,0.0, resol, 300,300);
+  // tf::Quaternion w_q_m;
+  // w_q_m.setRPY( 0, 0, 0 );  
+  // world_T_map.setRotation( w_q_m);
+  // br.sendTransform(tf::StampedTransform(world_T_map, ros::Time::now(), "world","map" ));
+  double xL = 300.0, yL = 300.0;
+  map2D map_2d(0.0,0.0, resol, xL,yL);
   int idx=0;
   while(n.ok() || !f.eof()){
     std::vector<double> ranges;
     std::getline(f,data);
-    idx++;
-    if(idx%200==0) std::cout<<idx<<"\n";
     msg_val = slice_data(data);
-
     if (msg_val.at(0) == 180){
+    
         Vector2d p(x,y); // robot pose
         /* populate the LaserScan message */
         for (unsigned int i=1;i<msg_val.size()-7;++i)    ranges.push_back(msg_val.at(i));
         scan.ranges.resize(num_readings);
         // for (auto i : ranges) std::cout<<i<<'\n';
+
         // std::cout<<ranges.size()<<'\n';
         ros::Time scan_time = ros::Time::now();
         scan.header.stamp = scan_time;
@@ -264,21 +285,69 @@ int main(int argc, char** argv){
                 }
                 Vector2d ptBody(psPts[j].first,psPts[j].second);
                 
-                MatrixXd zw = (T * ptBody/resol) + p/resol;
+                // MatrixXd zw = (T * ptBody/resol) + p/resol;
+                MatrixXd zw = (T * ptBody) + p;
+
+                // std::cout<<zw(0)<<'\t'<<zw(1)<<'\n';
                 map_2d.setValue(zw(0),zw(1),gVal);
 
             }
         }
 
-        std::vector<int8_t> map_data = map_2d.getGrid();
+        
+        double sigma_noise, l, c, up, down;
+        std::string line;
+        int dim,data_size, pseudo_size, test_size;
+        std::ifstream configFile ("params");
+        if (configFile.is_open()) {
+            getline(configFile,line);
+            c = stod(line);
+            getline(configFile,line);
+            l = stod(line);
+            getline(configFile,line);
+            sigma_noise = stod(line);
+        }
+        configFile.close();
+        // std::ofstream dataFile;
+        // dataFile.open("data.csv");
+        std::pair<Eigen::MatrixXd,Eigen::VectorXd> psData = map_2d.getPseudoPts();
+        std::pair<Eigen::MatrixXd,Eigen::VectorXd> trData = map_2d.getTrainingPts();
+      
+        gpModel model(c,l,sigma_noise);
+        model.set_training_data(trData.first,trData.second);
+        model.set_pseudo_data(psData.first);
+        
+        std::random_device rd{};
+        std::mt19937 gen{rd()};
+        std::normal_distribution<> rand{0, 1.0};
+        int temp = psData.second.size();
+        Eigen::MatrixXd X_test(temp,2);
+  
+        for(int i=0;i<temp;i++) {
+            // for(int j=0;j<temp;j++) {
+            //     // std::cout<<i*temp + j<<"\n";
+            X_test(i,0) = psData.first(i,0) + rand(gen);
+            X_test(i,1) = psData.first(i,1) + rand(gen);
+            // dataFile << X_test(i,0)<<" "<<X_test(i,1)<<" ";
+            // }
+        }
+        model.set_test_data(X_test);
+        std::tuple<Eigen::VectorXd, Eigen::VectorXd> res = model.predict();
 
-        map.data = map_data;
+        Eigen::VectorXd mu_pred = std::get<0>(res);
+        Eigen::VectorXd sigma_pred = std::get<1>(res);
+
+    
+        std::vector<int8_t> rer = getDistGrid(X_test,mu_pred,resol,xL,yL);
+        map.data = rer;
         map_pub.publish(map);
         world_T_map.setOrigin( tf::Vector3(0.0, 0.0, 0.0) );
         tf::Quaternion w_q_m;
-        w_q_m.setRPY( 0, 0, -3.14);  
+        w_q_m.setRPY( 0, 0, 0);  
         world_T_map.setRotation( w_q_m);
         br.sendTransform(tf::StampedTransform(world_T_map, ros::Time::now(), "world","map" ));
+        std::cout<<"once"<<'\n';
+ 
 
 
 
@@ -370,4 +439,8 @@ int main(int argc, char** argv){
   //   for (unsigned int i=8;i<msg_val.size()-2;i++)    ranges.push_back(msg_val.at(i));
     r.sleep();
   }
+  
+    return 0;
 }
+
+

@@ -51,17 +51,17 @@ Eigen::VectorXd robot2D::Homogenize(const Eigen::VectorXd& v) {
 }
 Eigen::Vector2d robot2D::Dehomogenize(const Eigen::Vector3d& v) {
     Eigen::Vector2d v_de;
-    v_de<<v(Eigen::seq(0,Eigen::last-1))/v(Eigen::last);
+    v_de<<v(Eigen::seq(0,Eigen::placeholders::last-1))/v(Eigen::placeholders::last);
     return v_de;
 }
 Eigen::Vector3d robot2D::Dehomogenize(const Eigen::Vector4d& v) {
     Eigen::Vector3d v_de;
-    v_de<<v(Eigen::seq(0,Eigen::last-1))/v(Eigen::last);
+    v_de<<v(Eigen::seq(0,Eigen::placeholders::last-1))/v(Eigen::placeholders::last);
     return v_de;
 }
 Eigen::VectorXd robot2D::Dehomogenize(const Eigen::VectorXd& v) {
     Eigen::VectorXd v_de;
-    v_de<<v(Eigen::seq(0,Eigen::last-1))/v(Eigen::last);
+    v_de<<v(Eigen::seq(0,Eigen::placeholders::last-1))/v(Eigen::placeholders::last);
     return v_de;
 }
 Eigen::Vector2d robot2D::bodyToWorld(const Eigen::Vector2d& p) {

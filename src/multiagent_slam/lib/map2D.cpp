@@ -66,24 +66,24 @@ std::pair<int,int> map2D::getClosestBlock(double x, double y) {
 void map2D::setValue(double x, double y, double value) {
     std::pair<double,double> pt = getClosestBlock(x/resolution_,y/resolution_);
     num_training_pts_++;
+    X.push_back({x/resolution_,y/resolution_});
+    Y.push_back(value);
     if(map.find(pt)==map.end()) {
         map.insert({pt,value});
         count.insert({pt,1});
-        X.push_back({x/resolution_,y/resolution_});
-        Y.push_back(value);
         num_pseudo_pts_++;
     }
     else {
-        if(value<0) {
-            map[pt] = std::min(map[pt],value);
-            yMin = std::max(yMin,map[pt]);
-        }
-        else {
-            map[pt] = std::max(map[pt],value);
-            yMax = std::max(yMax,map[pt]);
-        }
-        // count[pt]+=1;
-        // map[pt]+= (map[pt]-value)/count[pt];
+        // if(value<0) {
+        //     map[pt] = std::min(map[pt],value);
+        yMin = std::max(yMin,map[pt]);
+        // }
+        // else {
+        //     map[pt] = std::max(map[pt],value);
+        yMax = std::max(yMax,map[pt]);
+        // }
+        count[pt]+=1;
+        map[pt]+= (map[pt]-value)/count[pt];
         // X.push_back({x,y});
         // Y.push_back(value);
     }
@@ -98,7 +98,7 @@ double map2D::getValue(int x, int y) {
 }
 
 std::pair<Eigen::MatrixXd,Eigen::VectorXd> map2D::getPseudoPts() {
-    // std::cout<<num_pseudo_pts_<<"\n";
+    std::cout<<num_pseudo_pts_<<"\n";
     Eigen::MatrixXd xps(num_pseudo_pts_,2);
     Eigen::VectorXd yps(num_pseudo_pts_);
     int i = 0;
@@ -112,6 +112,7 @@ std::pair<Eigen::MatrixXd,Eigen::VectorXd> map2D::getPseudoPts() {
 }
 
 std::pair<Eigen::MatrixXd,Eigen::VectorXd> map2D::getTrainingPts() {
+    std::cout<<num_training_pts_<<"\n";
     Eigen::MatrixXd xtr(num_training_pts_,2);
     Eigen::VectorXd ytr(num_training_pts_);
     for(int i=0;i<num_training_pts_;i++) {
@@ -127,8 +128,7 @@ std::vector<int8_t> map2D::getGrid() {
     int numX = xLimit_/resolution_;
     int numY = yLimit_/resolution_;
     for(auto const& x : map) {
-        // std::cout<<x.first.first<<":"<<x.first.second<<"\n";
-        grr[int(x.first.first + numX)*6000 + int(x.first.second+numY)] = int8_t(100*(x.second+yMin)/(yMax-yMin));
+        grr[int(x.first.first + numX)*6000 + int(x.first.second+numY)] = int8_t(100*(x.second-yMin)/(yMax-yMin));
     }
     return grr;
 }

@@ -25,6 +25,8 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME}_core
 	lib/map2D.cpp
+	lib/gpModel.cpp
+	lib/robot2D.cpp
 )
 
 #target_link_libraries($(PROJECT_NAME}_core
@@ -40,9 +42,13 @@ add_executable(create_rosbag scripts/create_rosbag.cpp)
 target_link_libraries(create_rosbag ${catkin_LIBRARIES})
 add_dependencies(create_rosbag ${PROJ_DEPS})
 
-add_executable(publish_lidar scripts/carmen_gaussian.cpp)
+add_executable(publish_lidar scripts/ros_gaussian.cpp)
 target_link_libraries(publish_lidar ${catkin_LIBRARIES} ${PROJECT_NAME}_core)
 add_dependencies(publish_lidar ${PROJ_DEPS})
+
+add_executable(new_gaussian scripts/carmen_gaussian.cpp)
+target_link_libraries(new_gaussian ${catkin_LIBRARIES} ${PROJECT_NAME}_core)
+add_dependencies(new_gaussian ${PROJ_DEPS})
 
 
 
