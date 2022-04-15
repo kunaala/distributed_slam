@@ -41,7 +41,15 @@ void se::Octree< T >::init 	(int size,float dim );
    static inline value_type empty(){ return {0.f, 0.f}; }
    static inline value_type initValue(){ return {0.f, 0.f}; }
  };
-  
+### Number of voxels per side in a voxel block
+ *default* = 8 :  blockSide ,BLOCK_SIDE;
+### maximum tree depth in bits
+ max_depth = ((sizeof(key_t)*8)/3);
+ where key_t is typedef uint64_t
+### Tree depth at which blocks are found
+ block_depth = max_depth - math::log2_const(BLOCK_SIDE);
+ where log2_const(n) = n < 2 ? 0 : 1 + log2_const(n/2)
+    
 ## Methods
 ### get function - Retrieves voxel value at coordinates (x,y,z) 
 Octree< T >::value_type se::Octree< T >::get 	(const int x, const int  	y,const int  	z)
