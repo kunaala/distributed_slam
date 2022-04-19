@@ -1,0 +1,8 @@
+pub_rate: 50.0
+log_file : "filtered2.log"
+start_angle : -1.570796
+field_of_view : 3.141593
+end_angle : 1.570796
+angular_resolution : 0.017453294
+maximum_range : 81.920000
+laser_frequency : 40
