@@ -6,6 +6,15 @@ This node has the implementation of the Sparse Gaussian process regression. The 
 * The robot2D and the map2D classes are written as a base for further development and testing the gpModel.
 
 ## Build
+### Prerequisites:
+- Ensure Eigen is installed or for installation 
+Eigen is a header only library, To use Eigen in the code 
+
+~~~~
+git clone https://gitlab.com/libeigen/eigen.git
+copy the Eigen folder into /usr/local/include/
+~~~~
+
 1. Build instructions
 
 Navigate to catkin_workspace directory
