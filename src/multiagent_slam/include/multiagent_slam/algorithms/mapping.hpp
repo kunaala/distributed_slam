@@ -29,54 +29,41 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#ifndef OCTREE_CONFIG_H
-#define OCTREE_CONFIG_H
+#ifndef ALGO_MAPPING_HPP
+#define ALGO_MAPPING_HPP
+#include <node.hpp>
 
-#include <cstdint>
-#include "utils/math_utils.h"
-
-#define BLOCK_SIDE 8
-#define MAX_BITS 21
-#define CAST_STACK_DEPTH 23
-#define SCALE_MASK ((se::key_t)0x1FF)
-
-namespace se {
-typedef uint64_t key_t;
-//   typedef long long int morton_type; 
+inline float3 voxelToPos(const int3 p, const float voxelSize){
+  return make_float3(p.x * voxelSize, p.y * voxelSize, p.z * voxelSize);
 }
 
-/*
- * Mask generated with:  
-   MASK[0] = 0x7000000000000000,
-   for(int i = 1; i < 21; ++i) {
-   MASK[i] = MASK[i-1] | (MASK[0] >> (i*3));
-   std::bitset<64> b(MASK[i]);
-   std::cout << std::hex << b.to_ullong() << std::endl;
-   }
- *
-*/
-constexpr uint64_t MASK[] = {
-  0x7000000000000000,
-  0x7e00000000000000,
-  0x7fc0000000000000,
-  0x7ff8000000000000,
-  0x7fff000000000000,
-  0x7fffe00000000000,
-  0x7ffffc0000000000,
-  0x7fffff8000000000,
-  0x7ffffff000000000,
-  0x7ffffffe00000000,
-  0x7fffffffc0000000,
-  0x7ffffffff8000000,
-  0x7fffffffff000000,
-  0x7fffffffffe00000,
-  0x7ffffffffffc0000,
-  0x7fffffffffff8000,
-  0x7ffffffffffff000,
-  0x7ffffffffffffe00,
-  0x7fffffffffffffc0,
-  0x7ffffffffffffff8,
-  0x7fffffffffffffff
-};
+namespace algorithms {
 
+  template <typename T>
+    void integratePass(se::VoxelBlock<T> ** blockList, unsigned int list_size, 
+        const float * depth, uint2 depthSize, const float voxelSize, 
+        const Matrix4 invTrack, const Matrix4 K, const float mu, 
+        const float maxweight, const int current_frame) {
+
+#pragma omp parallel for
+      for(unsigned int i = 0; i < list_size; ++i){
+        integrate(blockList[i], depth, depthSize, voxelSize,
+            invTrack, K, mu, maxweight);
+        blockList[i]->timestamp(current_frame);
+      }
+    }
+
+  /*
+   * MemoryBufferType is an instance of the memory allocator class
+   */
+  template <typename MemoryBufferType, typename UpdateFunctor>
+    void integratePass(MemoryBufferType&  nodes_list, unsigned int list_size, 
+        UpdateFunctor f) {
+
+#pragma omp parallel for
+      for(unsigned int i = 0; i < list_size; ++i){
+        f(nodes_list[i]);
+      }
+    }
+}
 #endif
