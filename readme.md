@@ -36,6 +36,8 @@ rosrun rviz rviz -d scan.rviz
 ~~~~
 cd <ros_ws>
 source devel/setup/bash
+rosparam load $(rospack find gaussian_map)/config/gp_params.yaml
 rosrun gaussian_map gp_map
 ~~~~
+![map_video](https://github.com/jamesdi1993/multiagent-slam/tree/ros_wrapped/gaussian_map.mp4)
 
