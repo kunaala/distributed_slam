@@ -27,15 +27,18 @@ add_library(${PROJECT_NAME}_core
 	lib/map2D.cpp
 	lib/gpModel.cpp
 	lib/robot2D.cpp
+	lib/Gaussian_pub.cpp
 )
 
-#target_link_libraries($(PROJECT_NAME}_core
-#  ${catkin_LIBRARIES}
-#	)
-catkin_install_python(PROGRAMS
-    scripts/carmen2rosbag.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#catkin_install_python(PROGRAMS
+#    scripts/carmen2rosbag.py
+#  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#)
+
+target_link_libraries(${PROJECT_NAME}_core
+  ${catkin_LIBRARIES}
 )
+
 
 ## Build executables
 add_executable(create_rosbag scripts/create_rosbag.cpp)

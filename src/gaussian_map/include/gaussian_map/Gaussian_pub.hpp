@@ -1,50 +1,41 @@
+#ifndef GAUSSIAN_PUB_HPP_
+#define GAUSSIAN_PUB_HPP_
 #include<iostream>
-#include<fstream>
-#include<sstream>
 #include<vector>
-#include<Eigen/Dense>
-#include<map>
-#include<unordered_map>
-#include <random>
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
-#include "gaussian_map/map2D.h"
-#include "gaussian_map/gpModel.h"
-#include "gaussian_map/utils/plot_utils.hpp"
-#include "gaussian_map/utils/filter_utils.hpp"
-#include "gaussian_map/utils/math_utils.h"
 
-using namespace Eigen;
+
 
 
 class Gaussian_pub{
     public:
-        Gaussian_pub(ros::Nodehandle &nh);
-
-    private: 
-        ros::NodeHandle nh;
-        ros::Publisher scan_pub, odom_pub, map_pub;
-        ros::Rate r(50.0);  
-        double end_angle, start_angle, field_of_view, angular_resolution, maximum_range, laser_frequency;
-        std::string  data_file;
-        std::ifstream file_name;
+        Gaussian_pub(const ros::NodeHandle &nh);
+        void update_odom(std::vector<double> pose);
+        void update_map(std::vector<int8_t> rer);
         nav_msgs::Odometry odom;
         nav_msgs::OccupancyGrid map;
+        sensor_msgs::LaserScan scan;
+        // void odom_callback(const ros::TimerEvent &event);
+        // void map_callback(const ros::TimerEvent &event);
+
+
+    private: 
+        ros::NodeHandle nh_;
+        ros::Publisher scan_pub, odom_pub, map_pub;
+
+        unsigned int num_readings;
+
         tf::TransformBroadcaster br;
         tf::Transform world_T_map,world_T_robot;
-        Matrix2d T;
-        MatrixXd angles
-        int local_cx = 1,local_cy =1;
-        double x_max=0.0, y_max = 0.0;
-        double xL = 300.0, yL = 300.0;
+        ros::Timer timer_odom_,timer_map_;
 
 
-
- 
 
 
 };
+#endif //GAUSSIAN_PUB_HPP_
