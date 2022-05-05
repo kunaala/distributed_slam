@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(multiagent_slam)
 
 set(PROJ_DEPS roscpp std_msgs message_generation roslib rosbag sensor_msgs nav_msgs tf)
+set(field_type SE_FIELD_TYPE=SDF)
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS ${PROJ_DEPS})
 

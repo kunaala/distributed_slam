@@ -6,7 +6,7 @@
 #include <vector>
 #include <memory>
 #include <Eigen/Dense>
-#include <config.h>
+#include "config.h"
 #include <multiagent_slam/octree.hpp>
 
 
@@ -29,12 +29,13 @@ class denseSLAM {
         bool need_render_ = false;
         Configuration config_;
 
-        // input once
-        std::vector<float> gaussian_;
-
         std::vector<se::key_t> allocation_list_;
         std::shared_ptr<se::Octree<FieldType> > discrete_vol_ptr_;
         Volume<FieldType> volume_;
+
+        Eigen::VectorXf float_depth_;
+        // Eigen::Matrix4f old_pose_;
+        // Eigen::Matrix4f raycast_pose_;
 
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
