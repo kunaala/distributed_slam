@@ -100,7 +100,6 @@ int main(int argc, char *argv[] ) {
     nh.getParam("maximum_range", maximum_range);
     nh.getParam("laser_frequency", laser_frequency);
     
-    
     int idx = 0;
 
     // std::vector<double> msg_val;
@@ -127,16 +126,20 @@ int main(int argc, char *argv[] ) {
     }
     configFile.close();
     std::vector<int8_t> rer(6000*6000,-1);
+
     // Reading file and compute Pseudo pts and compute distances
     while(ros::ok || !inpFile.eof()) {
         // map.data = rer;
         // map_pub.publish(map);
+
         idx++;
         // if(idx==175) break;
         if(idx%200==0) std::cout<<idx<<"\n";
         // inpFile>>line;
         std::vector<std::string> input = read_data(inpFile);
+
         if(input[0]=="ODOM") {
+
             double x_pose = stod(input[1])-x_orig;
             double y_pose = stod(input[2])-y_orig;
             double theta_pose = stod(input[3]);
