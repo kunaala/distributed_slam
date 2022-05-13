@@ -8,36 +8,19 @@
 #include <algorithm>
 #include <Eigen/Dense>
 #include "config.h"
-#include <gaussian_map/octree.hpp>
-#include <gaussian_map/robot.h>
-#include <gaussian_map/dataloader.h>
-#include <gaussian_map/kfusion/alloc_impl.hpp>
-#include <gaussian_map/volume_traits.hpp>
-#include <gaussian_map/volume_template.hpp>
+#include <multiagent_slam/octree.hpp>
+#include <multiagent_slam/robot.h>
+#include <multiagent_slam/dataloader.h>
+#include <kfusion/alloc_impl.hpp>
 
-// typedef struct {
-//   float x;
-//   float y;
-// }SDF;
-
-// template<>
-// struct voxel_traits<SDF> {
-//   typedef SDF value_type;
-//   static inline value_type empty(){ return {1.f, -1.f}; }
-//   static inline value_type initValue(){ return {1.f, 0.f}; }
-// };
-
-
-
-// typedef SDF FieldType;
 typedef SE_FIELD_TYPE FieldType;
 template <typename T>
 using Volume = VolumeTemplate<T, se::Octree>;
 
 class slam {
     protected:
-        Eigen::Vector3f volume_resolution_;
-        Eigen::Vector3i volume_dimension_;
+        Eigen::Vector3i volume_resolution_;
+        Eigen::Vector3f volume_dimension_;
         std::vector<se::key_t> allocation_list_;
         std::vector<float> float_depth_;
         std::shared_ptr<se::Octree<FieldType> > discrete_vol_ptr_;

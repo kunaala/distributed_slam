@@ -1,4 +1,4 @@
-#include<gaussian_map/robot.h>
+#include<multiagent_slam/robot.h>
 
 
 // robot::robot(double x, double y, double z, double theta1, double theta2, double theta3) {
@@ -38,19 +38,18 @@ Eigen::Vector3f robot::worldToBody(const Eigen::Vector3f& p) {
     Eigen::Matrix4f T_inv = Eigen::Matrix4f::Zero(3,3);
     T_inv(3,3) = 1.0;
     Eigen::Matrix3f R = pose_.topLeftCorner(3,3);
-    Eigen::Vector3f tr = pose_.block(0,3,3,1);
-    // return R.transpose()*p - R.transpose()*tr*p;
-    return R.transpose()*(p - tr);
+    Eigen::Vector3f tr = pose_.block(0,2,2,1);
+    return R.transpose()*p - R.transpose()*tr*p;
 }
 
 Eigen::Matrix<float, 3, Eigen::Dynamic> robot::worldToBody(const Eigen::Matrix<float, 3, Eigen::Dynamic>& p) {
     Eigen::Matrix<float, 4, Eigen::Dynamic> p_ho = Homogenize(p);
-    Eigen::Matrix4f T_inv = Eigen::MatrixXf::Zero(4,4);
+    Eigen::Matrix4f T_inv = Eigen::MatrixXd::Zero(3,3);
     T_inv(3,3) = 1.0;
     Eigen::Matrix3f R = pose_.topLeftCorner(3,3);
-    Eigen::Vector3f tr = pose_.block(0,3,3,1);
+    Eigen::Vector3f tr = pose_.block(0,2,2,1);
     T_inv.topLeftCorner(3,3) = R.transpose();
-    T_inv.block(0,3,3,1) = -R.transpose()*tr;
+    T_inv.block(0,2,2,1) = -R.transpose()*tr;
     return Dehomogenize(T_inv*p_ho);
 }
 
@@ -66,6 +65,6 @@ Eigen::Matrix<float, 4, Eigen::Dynamic> Homogenize(const Eigen::Matrix<float, 3,
 
 Eigen::Matrix<float, 3, Eigen::Dynamic> Dehomogenize(const Eigen::Matrix<float, 4, Eigen::Dynamic>& v) {
     Eigen::VectorXf scale = v.row(3);
-    Eigen::Matrix<float, 3, Eigen::Dynamic> v_de = v.topRows(3)* scale.cwiseInverse().asDiagonal();
+    Eigen::Matrix<float, 3, Eigen::Dynamic> v_de = v.topRows(3).rowwise()/scale.transpose();
     return v_de;
 }

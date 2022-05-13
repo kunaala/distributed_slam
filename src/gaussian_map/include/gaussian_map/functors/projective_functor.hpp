@@ -40,27 +40,6 @@
 
 namespace se {
 namespace functor {
-
-  template <typename FieldType, template <typename FieldT> class MapT, typename UpdateF>
-  void projective_map(MapT<FieldType>& map, const Sophus::SE3f& Tcw, 
-                      const Eigen::Matrix4f& K, const Eigen::Vector2i framesize,
-                      UpdateF funct) {
-  
-  /*
-  * map : Volume map index by reference
-  * Trw : Robot pose in robot frame
-  * funct struct 
-          depth arrray ptr,
-          compute size vector , 
-          mu, 
-          100);
-  */
-    projective_functor<FieldType, MapT, UpdateF> 
-      it(map, funct, Tcw, K, framesize);
-    it.apply();
-  }
-
-
   template <typename FieldType, template <typename FieldT> class MapT, 
             typename UpdateF>
   class projective_functor {
@@ -185,7 +164,16 @@ namespace functor {
       std::vector<se::VoxelBlock<FieldType>*> _active_list;
   };
 
-  
+  template <typename FieldType, template <typename FieldT> class MapT, 
+            typename UpdateF>
+  void projective_map(MapT<FieldType>& map, const Sophus::SE3f& Tcw, 
+          const Eigen::Matrix4f& K, const Eigen::Vector2i framesize,
+          UpdateF funct) {
+
+    projective_functor<FieldType, MapT, UpdateF> 
+      it(map, funct, Tcw, K, framesize);
+    it.apply();
+  }
 }
 }
 #endif

@@ -29,7 +29,7 @@
 
 #ifndef UNIQUE_HPP
 #define UNIQUE_HPP
-#include <gaussian_map/octant_ops.hpp>
+#include <multiagent_slam/octant_ops.hpp>
 
 namespace se {
 namespace algorithms {

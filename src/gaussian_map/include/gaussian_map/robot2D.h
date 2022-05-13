@@ -37,4 +37,4 @@ class robot2D {
         Eigen::Vector3d worldToBody(const Eigen::Vector3d& p);
         Eigen::VectorXd worldToBody(const Eigen::VectorXd& p);
 };
-#endif 
+#endif

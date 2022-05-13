@@ -1,4 +1,4 @@
-#include<gaussian_map/slam.h>
+#include<multiagent_slam/slam.h>
 
 
 slam::slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim,std::string datafile, float ps_grid_res, float mu):
@@ -98,11 +98,10 @@ bool slam::mapNext() {
         // std::clamp(float_sdf,mu_,-mu_);
         Eigen::Matrix<float,180*9,3> mapPts_worldFrame = agentT_.bodyToWorld(mapPts_robotFrame.transpose()).transpose();
         unsigned int allocated = buildAllocationList(allocation_list_.data(), allocation_list_.capacity(),
-                                    mapPts_worldFrame, *volume_._map_index, 180*9,
+                                    mapPts_worldFrame, *volume_.map_index, 180*9,
                                     volume_._size, voxelsize, 2*mu_);
 
         volume_._map_index->allocate(allocation_list_.data(), allocated);
 
     }
-    return true;
 }

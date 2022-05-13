@@ -1,4 +1,4 @@
-#include<gaussian_map/dataloader.h>
+#include<multiagent_slam/dataloader.h>
 #include<string>
 
 dataloader::dataloader(std::string datafile, int type) {
@@ -10,7 +10,7 @@ std::pair<int,Eigen::VectorXf> dataloader::getNextPoint() {
     std::string line;
     std::getline(inpFile_, line);
     if(inpFile_.eof()) {
-        return std::make_pair(-1, Eigen::Vector2f::Zero());
+        return std::make_pair(-1, Eigen::VectorXf::Zero());
     }
     int typeR = 0;
     std::string token;

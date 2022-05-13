@@ -41,7 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SCALE_MASK ((se::key_t)0x1FF)
 
 namespace se {
-typedef uint64_t key_t; 
+typedef uint64_t key_t;
 //   typedef long long int morton_type; 
 }
 

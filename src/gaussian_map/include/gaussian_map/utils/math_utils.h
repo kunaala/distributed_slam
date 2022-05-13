@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Dense>
-#include <vector>
+
 #define SOPHUS_DISABLE_ENSURES
 /* 
  * When compiling in debug mode Eigen compilation fails 
@@ -52,56 +52,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <Eigen/Dense>
 #include <sophus/se3.hpp>
 #endif
-
-using namespace Eigen;
-
-MatrixXd polar_cart(MatrixXd r, MatrixXd theta){
-    // MatrixXd z(4,r.cols());
-    MatrixXd z(2,r.cols());
-
-    z.row(0) = (r.array() * theta.array().cos()).matrix();
-    z.row(1) = (r.array() * theta.array().sin()).matrix();
-    // z.row(2) = VectorXd::Zero(r.cols());
-    // z.row(3) = VectorXd::Ones(r.cols());
-    return z;
-}
-
-double tsdf(double p1_x, double p1_y, double p2_x, double p2_y, double qx, double qy){
-    double d = abs((p2_x - p1_x) * (p1_y- qy) - (p1_x - qx)*(p2_y - p1_y));
-    d /= sqrt(pow((p2_x - p1_x),2) + pow((p2_y - p1_y),2));
-    return d;
-}
-double scale(double z, double resol){
-  z/=resol;
-  return z;
-
-}
-
-double getSignedDist(double x0, double y0,double x1, double y1,double x2, double y2) {
-    double dist = sqrt((x2-x1)*(x2-x1) + (y1-y2)*(y1-y2));
-    // std::cout<<(dist)<<"\n";
-    double val = abs((x2-x1)*(y1-y0) - (x1-x0)*(y2-y1));
-    // std::cout<<val<<"\n";
-    return val/dist;
-}
-
-double euclidDist(double x1, double y1, double x2, double y2) {
-    return pow(x1-x2,2)+pow(y1-y2,2);
-}
-
-std::vector<std::pair<double,double> > getPseudoPts(double x, double y, double resolution) {
-    std::vector<std::pair<double,double> > res;
-    res.push_back(std::make_pair(x,y));
-    res.push_back(std::make_pair(x+resolution,y));
-    res.push_back(std::make_pair(x,y+resolution));
-    res.push_back(std::make_pair(x+resolution,y+resolution));
-    res.push_back(std::make_pair(x-resolution,y));
-    res.push_back(std::make_pair(x,y-resolution));
-    res.push_back(std::make_pair(x-resolution,y-resolution));
-    res.push_back(std::make_pair(x+resolution,y-resolution));
-    res.push_back(std::make_pair(x-resolution,y+resolution));
-    return res;
-}
 
 
 namespace se {
