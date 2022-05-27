@@ -1,4 +1,4 @@
-#include<multiagent_slam/robot.h>
+#include<gaussian_map/robot.h>
 
 
 // robot::robot(double x, double y, double z, double theta1, double theta2, double theta3) {

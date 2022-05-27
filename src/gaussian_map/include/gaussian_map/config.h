@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <multiagent_slam/utils/math_utils.h>
+#include <gaussian_map/utils/math_utils.h>
 #include <vector>
 #include <string>
 

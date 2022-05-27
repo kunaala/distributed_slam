@@ -4,14 +4,17 @@
 #include <iostream>
 #include <cstdlib>
 #include <vector>
+#include <map>
 #include <memory>
 #include <algorithm>
 #include <Eigen/Dense>
 #include "config.h"
-#include <multiagent_slam/octree.hpp>
-#include <multiagent_slam/robot.h>
-#include <multiagent_slam/dataloader.h>
+#include <gaussian_map/octree.hpp>
+#include <gaussian_map/robot.h>
+#include <gaussian_map/dataloader.h>
+#include <gaussian_map/pointDs.h>
 #include <kfusion/alloc_impl.hpp>
+#include <kfusion/mapping_impl.hpp>
 
 typedef SE_FIELD_TYPE FieldType;
 template <typename T>
@@ -21,7 +24,9 @@ class slam {
     protected:
         Eigen::Vector3i volume_resolution_;
         Eigen::Vector3f volume_dimension_;
-        std::vector<se::key_t> allocation_list_;
+        std::vector<struct pointVals> allocation_list_;
+        std::vector<struct pointVals> ordered_alloc_list_;
+        std::vector<int> keycount_per_block_;
         std::vector<float> float_depth_;
         std::shared_ptr<se::Octree<FieldType> > discrete_vol_ptr_;
         Volume<FieldType> volume_;
@@ -32,6 +37,7 @@ class slam {
         float ang_res_ = 2*0.008727;
         float ps_grid_res_ = 0.1;
         float mu_ = 3.f;
+        float maxWeight_ = 100.f;
         Eigen::VectorXf angle_vec_;
 
     public:

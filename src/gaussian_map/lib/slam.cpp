@@ -1,4 +1,4 @@
-#include<multiagent_slam/slam.h>
+#include<gaussian_map/slam.h>
 
 
 slam::slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim,std::string datafile, float ps_grid_res, float mu):
@@ -72,6 +72,8 @@ bool slam::mapNext() {
         unsigned int num_vox_per_pt = 1;
         size_t total = num_vox_per_pt * 180 * 9;
         allocation_list_.reserve(total);
+        ordered_alloc_list_.reserve(total);
+        keycount_per_block_.reserve(total);
 
         std::vector<float> float_sdf;
         Eigen::VectorXf vals = dataPoint.second;
@@ -97,11 +99,25 @@ bool slam::mapNext() {
         }
         // std::clamp(float_sdf,mu_,-mu_);
         Eigen::Matrix<float,180*9,3> mapPts_worldFrame = agentT_.bodyToWorld(mapPts_robotFrame.transpose()).transpose();
-        unsigned int allocated = buildAllocationList(allocation_list_.data(), allocation_list_.capacity(),
+        unsigned int allocated = buildAllocationList(allocation_list_.data(), allocation_list_.capacity(), float_sdf.data(),
                                     mapPts_worldFrame, *volume_.map_index, 180*9,
                                     volume_._size, voxelsize, 2*mu_);
+        
+        #if defined(_OPENMP) && !defined(__clang__)
+            __gnu_parallel::sort(allocation_list_.data(),allocation_list_.data() + allocated);
+        #else
+            std::sort(allocation_list_.data(),allocation_list_.data() + allocated, 
+                                            [](const auto& i, const auto& j) { 
+                                                if(i.typeAlloc==j.typeAlloc) return i.hash < j.hash;
+                                                else return i.typeAlloc > j.typeAlloc });
+        #endif
 
-        volume_._map_index->allocate(allocation_list_.data(), allocated);
+        int num_elem = algorithms::filter_ancestors(allocation_list_.data(), allocated,
+                                                ordered_alloc_list_.data() , keycount_per_block_.data());
 
+        volume_._map_index->allocate(allocation_list_.data(), num_elem);
+
+        struct sdf_update funct(float_sdf.data(), mu_, maxWeight_);
+        se::functor::projective_map(*volume_._map_index, funct, ordered_alloc_list_, keycount_per_block_);
     }
 }

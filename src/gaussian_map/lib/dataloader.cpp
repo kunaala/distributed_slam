@@ -1,4 +1,4 @@
-#include<multiagent_slam/dataloader.h>
+#include<gaussian_map/dataloader.h>
 #include<string>
 
 dataloader::dataloader(std::string datafile, int type) {

@@ -792,13 +792,13 @@ void Octree<T>::reserveBuffers(const int n){
 template <typename T>
 bool Octree<T>::allocate(key_t *keys, int num_elem){
 
-#if defined(_OPENMP) && !defined(__clang__)
-  __gnu_parallel::sort(keys, keys+num_elem);
-#else
-std::sort(keys, keys+num_elem);
-#endif
+// #if defined(_OPENMP) && !defined(__clang__)
+//   __gnu_parallel::sort(keys, keys+num_elem);
+// #else
+// std::sort(keys, keys+num_elem);
+// #endif
 
-  num_elem = algorithms::filter_ancestors(keys, num_elem, max_level_);
+//   num_elem = algorithms::filter_ancestors(keys, num_elem, max_level_);
   reserveBuffers(num_elem);
 
   int last_elem = 0;
@@ -807,14 +807,28 @@ std::sort(keys, keys+num_elem);
   const int leaves_level = max_level_ - log2(blockSide);
   const unsigned int shift = MAX_BITS - max_level_ - 1;
   for (int level = 1; level <= leaves_level; level++){
-    const key_t mask = MASK[level + shift] | SCALE_MASK;
-    compute_prefix(keys, keys_at_level_, num_elem, mask);
+    const key_t mask = MASK[level + shift] | SCALE_MASK;  //Represents the mask corresponding to the level
+    compute_prefix(keys, keys_at_level_, num_elem, mask); //Computes the 
     last_elem = algorithms::unique_multiscale(keys_at_level_, num_elem, 
         SCALE_MASK, level);
     success = allocate_level(keys_at_level_, last_elem, level);
   }
   return success;
 }
+
+/**
+ * @brief For each key traverse the tree from root to find the lowest level corresponding to the key.
+ *        Then check if that level is the leaf level. then allocate in the block or allocate node.
+ *        Blocks are used to allocate in the lowest level (leaf level) otherwise nodes are used in the intermediate levels.
+ *        
+ * 
+ * @tparam T 
+ * @param keys 
+ * @param num_tasks 
+ * @param target_level 
+ * @return true 
+ * @return false 
+ */
 
 template <typename T>
 bool Octree<T>::allocate_level(key_t* keys, int num_tasks, int target_level){
@@ -853,6 +867,14 @@ bool Octree<T>::allocate_level(key_t* keys, int num_tasks, int target_level){
     }
   }
   return true;
+}
+
+template <typename T>
+bool Octree<T>::checkLevel(const key_t n) {
+  int leaves_level = max_level_ - log2(blockSide);
+  int lev = keyops::level(k);
+  if(lev==leaves_level) return true;
+  else return false;
 }
 
 template <typename T>

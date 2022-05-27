@@ -38,13 +38,13 @@
 namespace se {
   namespace keyops {
 
-    inline se::key_t code(const se::key_t key) {
+    inline se::key_t code(const se::key_t key) { /**<Gets the location within the block. Masks the 9 lsb bits*/
       return key & ~SCALE_MASK;
     }
 
-    inline int level(const se::key_t key) {
+    inline int level(const se::key_t key) { /**<Gets the block the the key corresponding block. Masks the n-9 msb bits*/
       return key & SCALE_MASK;
-}
+    }
 
     inline se::key_t encode(const int x, const int y, const int z, 
         const int level, const int max_depth) {

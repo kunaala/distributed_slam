@@ -29,7 +29,7 @@
 
 #ifndef UNIQUE_HPP
 #define UNIQUE_HPP
-#include <multiagent_slam/octant_ops.hpp>
+#include <gaussian_map/octant_ops.hpp>
 
 namespace se {
 namespace algorithms {
@@ -47,13 +47,18 @@ namespace algorithms {
     }
 
   template <typename KeyT>
-    inline int filter_ancestors(KeyT* keys, int num_keys, const int max_depth) {
+    inline int filter_ancestors(KeyT* keys, int num_keys, const int max_depth, KeyT* keyList, int* num_keys_per_block) {
       int e = 0;
+      int count = 0;
       for (int i = 0; i < num_keys; ++i){
-        if(descendant(keys[i], keys[e], max_depth)){
+        keyList.push_back(keys[i]);
+        if(descendant(keys[i].hash, keys[e].hash, max_depth)){
+          count++;
           keys[e] = keys[i];
-        } else { 
+        } else {
           /* end does not advance but previous entry is overwritten */
+          num_keys_per_block[e] = count;
+          count = 1;
           keys[++e] = keys[i];
         }
       }

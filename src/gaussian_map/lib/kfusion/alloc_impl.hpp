@@ -1,8 +1,8 @@
 #ifndef SDF_ALLOC_H
 #define SDF_ALLOC_H
-#include <multiagent_slam/utils/math_utils.h> 
-#include <multiagent_slam/node.hpp>
-#include <multiagent_slam/utils/morton_utils.hpp>
+#include <gaussian_map/utils/math_utils.h> 
+#include <gaussian_map/node.hpp>
+#include <gaussian_map/utils/morton_utils.hpp>
 
 
 /* 
@@ -21,7 +21,8 @@
  */
 
 template <typename FieldType, template <typename> class OctreeT, typename HashType>
-unsigned int buildAllocationList(HashType* allocationList, size_t reserved, const Eigen::Matrix<float,180*9,3> mapPts,
+unsigned int buildAllocationList(HashType* allocationList, size_t reserved, float* sdf_vals,
+                            const Eigen::Matrix<float,180*9,3> mapPts,
                             OctreeT<FieldType>& map_index, const unsigned int num_pts,
                             const unsigned int size, const float voxelSize, const float band) {
     
@@ -50,13 +51,17 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, cons
                 HashType k = map_index.hash(voxel.x(), voxel.y(), voxel.z(), block_scale);
                 unsigned int idx = voxelCount++;
                 if(idx < reserved) {
-                    allocationList[idx] = k;
+                    allocationList[idx].pt = mapPts.row(i);
+                    allocationList[idx].hash = k;
+                    allocationList[idx].sdf = sdf_vals[i];
+                    if(checkLevel(k)) allocationList[idx].typeAlloc = 0;
+                    else allocationList[idx].typeAlloc = 1;
                 }
                 else break;
             }
             else {
                 n->active(true);
-            }    
+            }
         }
     }
     const unsigned int written = voxelCount;
