@@ -39,12 +39,12 @@ Eigen::Vector3f robot::worldToBody(const Eigen::Vector3f& p) {
     T_inv(3,3) = 1.0;
     Eigen::Matrix3f R = pose_.topLeftCorner(3,3);
     Eigen::Vector3f tr = pose_.block(0,2,2,1);
-    return R.transpose()*p - R.transpose()*tr*p;
+    return R.transpose()*(p - tr);
 }
 
 Eigen::Matrix<float, 3, Eigen::Dynamic> robot::worldToBody(const Eigen::Matrix<float, 3, Eigen::Dynamic>& p) {
     Eigen::Matrix<float, 4, Eigen::Dynamic> p_ho = Homogenize(p);
-    Eigen::Matrix4f T_inv = Eigen::MatrixXd::Zero(3,3);
+    Eigen::Matrix4f T_inv = Eigen::Matrix4f::Zero();
     T_inv(3,3) = 1.0;
     Eigen::Matrix3f R = pose_.topLeftCorner(3,3);
     Eigen::Vector3f tr = pose_.block(0,2,2,1);
@@ -55,7 +55,7 @@ Eigen::Matrix<float, 3, Eigen::Dynamic> robot::worldToBody(const Eigen::Matrix<f
 
 // void robot::updateMotion()
 
-Eigen::Matrix<float, 4, Eigen::Dynamic> Homogenize(const Eigen::Matrix<float, 3, Eigen::Dynamic>& v) {
+Eigen::Matrix<float, 4, Eigen::Dynamic> robot::Homogenize(const Eigen::Matrix<float, 3, Eigen::Dynamic>& v) {
     int n = v.cols();
     Eigen::Matrix<float, 4, Eigen::Dynamic> v_ho = Eigen::Matrix<float, 4, Eigen::Dynamic>::Constant(4, n, 1.0);
     v_ho.topRows(3) = v;
@@ -63,8 +63,8 @@ Eigen::Matrix<float, 4, Eigen::Dynamic> Homogenize(const Eigen::Matrix<float, 3,
 }
 
 
-Eigen::Matrix<float, 3, Eigen::Dynamic> Dehomogenize(const Eigen::Matrix<float, 4, Eigen::Dynamic>& v) {
+Eigen::Matrix<float, 3, Eigen::Dynamic> robot::Dehomogenize(const Eigen::Matrix<float, 4, Eigen::Dynamic>& v) {
     Eigen::VectorXf scale = v.row(3);
-    Eigen::Matrix<float, 3, Eigen::Dynamic> v_de = v.topRows(3).rowwise()/scale.transpose();
+    Eigen::Matrix<float, 3, Eigen::Dynamic> v_de = v.topRows(3)* scale.cwiseInverse().asDiagonal();
     return v_de;
 }

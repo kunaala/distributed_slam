@@ -75,7 +75,7 @@ namespace functor {
 			bool is_visible = false;
 			unsigned int idx = start;
 			for(;idx<end;idx++) {
-				if(_allocList[idx].typeAlloc!=1) cout<<"Not block";
+				if(_allocList[idx].typeAlloc!=1) std::cout<<"Not block";
 				VoxelBlockHandler<FieldType> handler = {block, unpack_morton(_allocList[idx].hash)};
 				_function(handler, _allocList[idx].sdf);
 			}
@@ -153,8 +153,8 @@ namespace functor {
 			build_active_list();
 			const float voxel_size = _map.dim() / _map.size();
 			size_t list_size = _active_list.size();
-			#pragma omp parallel for
 			int prev = 0;
+			#pragma omp parallel for
 			for(unsigned int i = 0; i < list_size; ++i){
 				update_block(_active_list[i], voxel_size, prev, prev+_keycount_per_block[i]);
 				prev = prev+_keycount_per_block[i];
@@ -163,9 +163,11 @@ namespace functor {
 
 			auto& nodes_list = _map.getNodesBuffer();
 			list_size = nodes_list.size();
+
 			#pragma omp parallel for
 			for(unsigned int i = 0; i < list_size; ++i){
-				update_node(nodes_list[i], voxel_size);
+				update_node(nodes_list[i], voxel_size,prev);
+				prev++;
 			}
 		}
 
@@ -184,7 +186,7 @@ namespace functor {
 				typename UpdateF, typename PointStr>
 	void projective_map(MapT<FieldType>& map, UpdateF funct,
 					std::vector<PointStr>& allocList, std::vector<int>& num_keys_per_block) {
-		projective_functor<FieldType, MapT, UpdateF> 
+		projective_functor<FieldType, MapT, UpdateF,PointStr> 
 		it(map, funct, allocList, num_keys_per_block);
 		it.apply();
 	}

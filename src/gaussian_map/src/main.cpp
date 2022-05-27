@@ -1,4 +1,16 @@
-# include "Gaussian_pub.hpp"
+#include <iostream>
+#include <Eigen/Core>
+#include "gaussian_map/slam.h"
+
 int main(int argc, char** argv){
-  ros::init(argc, argv, "laser_scan_publisher");
-  ros::NodeHandle nh;
+  Eigen::Vector3f vol_res{256,256,256}; /**<No of voxels per edge in volume*/
+  Eigen::Vector3i vol_dim{100,100,100};
+  std::string datafile = "intel.gfs.log";
+  float pseudo_grid_res = 0.2, trunc_band=0.1;
+  slam maslam(vol_res,vol_dim,datafile,pseudo_grid_res,trunc_band);
+  for (unsigned int i=0;i<200;i++){
+    maslam.mapNext();
+  }
+
+  return 0;
+}

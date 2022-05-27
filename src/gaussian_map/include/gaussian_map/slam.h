@@ -13,19 +13,31 @@
 #include <gaussian_map/robot.h>
 #include <gaussian_map/dataloader.h>
 #include <gaussian_map/pointDs.h>
-#include <kfusion/alloc_impl.hpp>
-#include <kfusion/mapping_impl.hpp>
+#include <gaussian_map/kfusion/alloc_impl.hpp>
+#include <gaussian_map/kfusion/mapping_impl.hpp>
+#include <gaussian_map/volume_traits.hpp>
+#include<gaussian_map/volume_template.hpp>
+#include "gaussian_map/algorithms/unique.hpp"
+#include "gaussian_map/functors/projective_functor.hpp"
+
+
+// typedef struct {
+//   float x;
+//   float y;
+// }SDF;
+
 
 typedef SE_FIELD_TYPE FieldType;
+// typedef SDF FieldType;
 template <typename T>
 using Volume = VolumeTemplate<T, se::Octree>;
 
 class slam {
     protected:
-        Eigen::Vector3i volume_resolution_;
-        Eigen::Vector3f volume_dimension_;
-        std::vector<struct pointVals> allocation_list_;
-        std::vector<struct pointVals> ordered_alloc_list_;
+        Eigen::Vector3f volume_resolution_;
+        Eigen::Vector3i volume_dimension_;
+        std::vector<struct pointVals<se::key_t>> allocation_list_;
+        std::vector<struct pointVals<se::key_t>> ordered_alloc_list_;
         std::vector<int> keycount_per_block_;
         std::vector<float> float_depth_;
         std::shared_ptr<se::Octree<FieldType> > discrete_vol_ptr_;

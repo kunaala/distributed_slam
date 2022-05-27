@@ -35,7 +35,7 @@
 struct sdf_update {
 
 	template <typename DataHandlerT>
-	void operator()(DataHandlerT& handler, const Eigen::Vector3i&, const float sdf) {
+	void operator()(DataHandlerT& handler, const float sdf) {
 
 		// const Eigen::Vector2i px = pixel.cast<int>();
 		// const float depthSample = depth[px(0) + depthSize(0)*px(1)];
@@ -43,7 +43,7 @@ struct sdf_update {
 		// const float diff = (depthSample - pos(2)) 
 		// 	* std::sqrt( 1 + se::math::sq(pos(0) / pos(2)) + se::math::sq(pos(1) / pos(2)));
 		// if (diff > -mu) {
-		const float tsdf = fminf(1.f, diff / mu);
+		const float tsdf = fminf(1.f, sdf / mu);
 		auto data = handler.get();
 		data.x = se::math::clamp(
 				(static_cast<float>(data.y) * data.x + tsdf) / (static_cast<float>(data.y) + 1.f), 

@@ -51,7 +51,7 @@ namespace algorithms {
       int e = 0;
       int count = 0;
       for (int i = 0; i < num_keys; ++i){
-        keyList.push_back(keys[i]);
+        keyList[i] = keys[i];
         if(descendant(keys[i].hash, keys[e].hash, max_depth)){
           count++;
           keys[e] = keys[i];

@@ -48,13 +48,13 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, floa
             voxel = voxelScaled.cast<int>();
             se::VoxelBlock<FieldType> * n = map_index.fetch(voxel.x(), voxel.y(), voxel.z());
             if(!n) {
-                HashType k = map_index.hash(voxel.x(), voxel.y(), voxel.z(), block_scale);
+                se::key_t k = map_index.hash(voxel.x(), voxel.y(), voxel.z(), block_scale);
                 unsigned int idx = voxelCount++;
                 if(idx < reserved) {
                     allocationList[idx].pt = mapPts.row(i);
                     allocationList[idx].hash = k;
                     allocationList[idx].sdf = sdf_vals[i];
-                    if(checkLevel(k)) allocationList[idx].typeAlloc = 0;
+                    if(map_index.checkLevel(k)) allocationList[idx].typeAlloc = 0;
                     else allocationList[idx].typeAlloc = 1;
                 }
                 else break;

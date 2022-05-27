@@ -28,40 +28,23 @@ catkin_package(
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
+
 add_library(${PROJECT_NAME}_core
-	lib/map2D.cpp
 	lib/gpModel.cpp
-	lib/robot2D.cpp
-	lib/Gaussian_pub.cpp
 	lib/dataloader.cpp
 	lib/robot.cpp
+	lib/slam.cpp
 )
-
-#catkin_install_python(PROGRAMS
-#    scripts/carmen2rosbag.py
-#  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-#)
-
-# For linking libraries  with PROJ_DEPS
-target_link_libraries(${PROJECT_NAME}_core
-  ${catkin_LIBRARIES}
-)
-
-
-## Build libraries
-add_library(slam_lib  lib/slam.cpp)
-target_link_libraries(slam_lib ${PROJECT_NAME}_core)
-target_compile_definitions(slam_lib PUBLIC ${field_type}) 
-
+target_compile_definitions(${PROJECT_NAME}_core PUBLIC ${field_type}) 
 
 ## Build executables
 # add_executable(gp_map scripts/ros_gaussian.cpp)
 # target_link_libraries(gp_map ${catkin_LIBRARIES} ${PROJECT_NAME}_core)
 # add_dependencies(gp_map ${PROJ_DEPS})
 
-# add_executable(create_rosbag scripts/create_rosbag.cpp)
-# target_link_libraries(create_rosbag ${catkin_LIBRARIES})
-# add_dependencies(create_rosbag ${PROJ_DEPS})
+add_executable(gp_octree src/main.cpp)
+target_link_libraries(gp_octree  ${catkin_LIBRARIES} ${PROJECT_NAME}_core )
+# add_dependencies(gp_octree ${PROJ_DEPS})
 
 
 

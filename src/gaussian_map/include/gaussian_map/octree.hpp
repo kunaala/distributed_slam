@@ -217,7 +217,12 @@ public:
    * \param number of keys in the keys array
    */
   bool allocate(key_t *keys, int num_elem);
-
+  /**
+   * @brief returns true if morton code in leaf level( corresponds to Voxel block), False otherwise
+   * 
+   * @param n = morton code
+   */
+  bool checkLevel(const key_t n);
   void save(const std::string& filename);
   void load(const std::string& filename);
 
@@ -868,11 +873,10 @@ bool Octree<T>::allocate_level(key_t* keys, int num_tasks, int target_level){
   }
   return true;
 }
-
 template <typename T>
 bool Octree<T>::checkLevel(const key_t n) {
   int leaves_level = max_level_ - log2(blockSide);
-  int lev = keyops::level(k);
+  int lev = keyops::level(n);
   if(lev==leaves_level) return true;
   else return false;
 }
