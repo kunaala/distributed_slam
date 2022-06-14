@@ -80,6 +80,10 @@ bool slam::mapNext() {
         allocation_list_.reserve(total);
         ordered_alloc_list_.reserve(total);
         keycount_per_block_.reserve(total);
+        prev_alloc_list_.reserve(total);
+        prev_ordered_alloc_list_.reserve(total);
+        prev_keycount_per_block_.reserve(total);
+
 
         std::vector<float> float_sdf;
         Eigen::VectorXf vals = dataPoint.second;
@@ -100,30 +104,58 @@ bool slam::mapNext() {
         }
         // std::clamp(float_sdf,mu_,-mu_);
         Eigen::Matrix<float,180*9,3> mapPts_worldFrame = agentT_.bodyToWorld(mapPts_robotFrame.transpose()).transpose();
-        
-        unsigned int allocated = buildAllocationList(allocation_list_.data(), allocation_list_.capacity(), float_sdf.data(),
-                                    mapPts_worldFrame, *volume_._map_index, 180*9,
-                                    volume_._size, voxelsize, 2*mu_);
-       
+        int prev_alloc_size = -1, prev_num_blockpts = -1;
+        unsigned int allocated = buildAllocationList(allocation_list_.data(), allocation_list_.capacity(), prev_alloc_list_.data(),
+                                    float_sdf.data(), mapPts_worldFrame, *volume_._map_index, 180*9, prev_alloc_size,
+                                    prev_num_blockpts, volume_._size, voxelsize, 2*mu_);
+        std::cout<<"prev num blockpts"<< prev_num_blockpts<<":"<<prev_alloc_size<<'\n';
         #if defined(_OPENMP) && !defined(__clang__)
             __gnu_parallel::sort(allocation_list_.data(),allocation_list_.data() + allocated);
+            __gnu_parallel::sort(prev_alloc_list_.data(),prev_alloc_list_.data() + prev_alloc_size);
         #else
+             std::sort(prev_alloc_list_.data(),prev_alloc_list_.data() + prev_alloc_size, 
+                                            [](const auto& i, const auto& j) { 
+                                                if(i.typeAlloc==j.typeAlloc) return i.hash < j.hash;
+                                                else return (i.typeAlloc > j.typeAlloc); });
             std::sort(allocation_list_.data(),allocation_list_.data() + allocated, 
                                             [](const auto& i, const auto& j) { 
                                                 if(i.typeAlloc==j.typeAlloc) return i.hash < j.hash;
                                                 else return (i.typeAlloc > j.typeAlloc); });
+
+           
         #endif
-        
+
         int num_elem = se::algorithms::filter_ancestors(allocation_list_.data(), allocated, log2(volume_._size),
                                                 ordered_alloc_list_.data() , keycount_per_block_.data());
+        int prev_num_elem = se::algorithms::filter_ancestors(prev_alloc_list_.data(), prev_alloc_size, log2(volume_._size),
+                                                prev_ordered_alloc_list_.data() , prev_keycount_per_block_.data());
+
+        std::cout<<"num_pts"<<allocated<<"\n";
+        std::cout<<"num_blocks+nodes"<<num_elem<<"\n";
+        std::cout<<"Prev_num_pts"<<prev_alloc_size<<"\n";
+        std::cout<<"Prev_num_pts - blocks only"<<prev_num_blockpts<<"\n";
+        std::cout<<"Prev_num_blocks+nodes"<<prev_num_elem<<"\n";
+        int prev_num_blocks = 0;
+        for(unsigned int i=0;i<prev_num_elem;i++) {
+            if(prev_ordered_alloc_list_[i].typeAlloc==0) {
+                prev_num_blocks++;
+            }
+            else break;
+        }
+        std::cout<<"Prev_num_blocks only"<<prev_num_blocks<<"\n";
         std::vector<se::key_t> keys;
-        
-        for(auto i: allocation_list_)     keys.push_back(i.hash);
-        std::cout<<"problem here"<<'\n';
+
+        std::cout<<"Num new points after compaction = Num of new blocks+nodes to be allocated :"<<num_elem<<'\n';
+        for(unsigned int i =0; i < num_elem;i++){
+            keys.push_back(allocation_list_[i].hash);
+        }
+
         volume_._map_index->allocate(keys.data(), num_elem);
         
-        struct sdf_update funct(float_sdf.data(), mu_, maxWeight_);
-        se::functor::projective_map(*volume_._map_index, funct, ordered_alloc_list_, keycount_per_block_);
+        struct sdf_update funct(mu_, maxWeight_);
+        se::functor::projective_map(*volume_._map_index, funct, ordered_alloc_list_.data(), prev_ordered_alloc_list_.data(),
+                                    keycount_per_block_.data(), prev_keycount_per_block_.data(),
+                                    num_elem, prev_num_blocks, prev_num_elem-prev_num_blocks);
     }
     return true;
 }

@@ -71,12 +71,21 @@ inline uint64_t compute_morton(uint64_t x,
   return code;
 }
 
+/**
+ * @brief masks morton code as per the level of the key
+ * 
+ * @param in full morton code of keys
+ * @param out masked morton code of keys
+ * @param num_keys 
+ * @param mask masks associated with that level
+ */
+
 static inline void compute_prefix(const se::key_t * in, se::key_t * out,
     unsigned int num_keys, const se::key_t mask){
 
 #pragma omp parallel for
   for (unsigned int i = 0; i < num_keys; i++){
-    out[i] = in[i] & mask;
+    out[i] = in[i] & mask;    
   }
 }
 #endif

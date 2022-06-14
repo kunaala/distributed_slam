@@ -52,6 +52,8 @@ target_link_libraries(gp_octree  ${catkin_LIBRARIES} ${PROJECT_NAME}_core )
 #target_link_libraries(new_gaussian ${catkin_LIBRARIES} ${PROJECT_NAME}_core)
 #add_dependencies(new_gaussian ${PROJ_DEPS})
 
+install(TARGETS gp_octree
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 
 

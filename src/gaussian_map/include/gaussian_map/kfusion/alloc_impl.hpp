@@ -21,21 +21,24 @@
  */
 
 template <typename FieldType, template <typename> class OctreeT, typename HashType>
-unsigned int buildAllocationList(HashType* allocationList, size_t reserved, float* sdf_vals,
-                            const Eigen::Matrix<float,180*9,3> mapPts,
-                            OctreeT<FieldType>& map_index, const unsigned int num_pts,
+unsigned int buildAllocationList(HashType* allocationList, size_t reserved, HashType* oldAllocList, float* sdf_vals,
+                            const Eigen::Matrix<float,180*9,3> mapPts, OctreeT<FieldType>& map_index,
+                            const unsigned int num_pts, int &prev_alloc_size, int &prev_num_blockpts,
                             const unsigned int size, const float voxelSize, const float band) {
     
     const float inverseVoxelSize = 1/voxelSize;
     const unsigned block_scale = log2(size) - se::math::log2_const(se::VoxelBlock<FieldType>::side);
+    unsigned int newBlock=0,newNode=0,oldBlock=0,oldNode=0;
+
 
 
 #ifdef _OPENMP
-    std::atomic<unsigned int> voxelCount;
+    std::atomic<unsigned int> voxelCount=0;
+    std::atomic<unsigned int> oldCount=0;
 #else
-    unsigned int voxelCount;
+    unsigned int voxelCount=0;
+    unsigned int oldCount=0;
 #endif
-
 #pragma omp parallel for
     for(int i=0;i<num_pts;i++) {
         Eigen::Vector3i voxel;
@@ -46,24 +49,49 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, floa
             (voxelScaled.y() >= 0) &&   (voxelScaled.z() >= 0)) {
             
             voxel = voxelScaled.cast<int>();
+            /**< get the Block cooridinates */
             se::VoxelBlock<FieldType> * n = map_index.fetch(voxel.x(), voxel.y(), voxel.z());
+            // std::cout<<voxel<<"\n";
+            se::key_t k = map_index.hash(voxel.x(), voxel.y(), voxel.z(), block_scale);
+            std::cout<<k<<"hash is this---------\n";
             if(!n) {
-                se::key_t k = map_index.hash(voxel.x(), voxel.y(), voxel.z(), block_scale);
+                // se::key_t k = map_index.hash(voxel.x(), voxel.y(), voxel.z(), block_scale);
                 unsigned int idx = voxelCount++;
                 if(idx < reserved) {
+                    
                     allocationList[idx].pt = mapPts.row(i);
                     allocationList[idx].hash = k;
                     allocationList[idx].sdf = sdf_vals[i];
-                    if(map_index.checkLevel(k)) allocationList[idx].typeAlloc = 0;
-                    else allocationList[idx].typeAlloc = 1;
+                    // std::cout<<"allocated"<<i<<'\n'<<allocationList[idx].pt <<'\n'<<allocationList[idx].hash<<'\t'<<allocationList[idx].sdf<<'\n';
+                    if(map_index.checkLevel(k)) {
+                        allocationList[idx].typeAlloc = 0;
+                        newBlock++;
+                    }
+                    else{
+                        allocationList[idx].typeAlloc = 1;
+                        newNode++;
+                    }
                 }
                 else break;
             }
             else {
+                oldAllocList[oldCount].pt = mapPts.row(i);
+                oldAllocList[oldCount].hash = k;
+                oldAllocList[oldCount].sdf = sdf_vals[i];
+                if(n->isLeaf()) {
+                    oldBlock++;
+                    oldAllocList[oldCount].typeAlloc = 0;
+                }
+                else{
+                    oldAllocList[oldCount].typeAlloc = 1;
+                }
+                oldCount++;
                 n->active(true);
             }
         }
     }
+    prev_alloc_size = oldCount;
+    prev_num_blockpts = oldBlock;
     const unsigned int written = voxelCount;
     return written >= reserved ? reserved : written;
 }

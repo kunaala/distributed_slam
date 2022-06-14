@@ -10,5 +10,5 @@ struct pointVals {
     HashType hash;
     Eigen::Vector3f pt;
     float sdf;
-    bool typeAlloc; /**< 0-> Node 1-> Voxelblock */
+    bool typeAlloc; /**< 0-> Block 1-> Node */
 };

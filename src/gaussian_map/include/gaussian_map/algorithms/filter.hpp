@@ -40,7 +40,6 @@ namespace algorithms {
       const Eigen::Vector3f v_camera = camera.topLeftCorner<3, 4>() * 
             v->coordinates().template cast<float>().cwiseProduct(
             Eigen::Vector3f::Constant(voxelSize)).homogeneous();
-;
       const Eigen::Vector2i px = Eigen::Vector2i(v_camera(0)/v_camera(2), 
           v_camera(1)/v_camera(2));
       if(px(0) >= 0 && px(0) < frameSize(0) && px(1) >= 0 && px(1) < frameSize(1))
@@ -109,8 +108,10 @@ namespace algorithms {
   template <typename BlockType, typename... Predicates>
     void filter(std::vector<BlockType *>& out,
         const se::MemoryPool<BlockType>& block_array, Predicates... ps) {
+      // std::cout<<"block array size"<<block_array.size()<<'\n';
       for(unsigned int i = 0; i < block_array.size(); ++i) {
         if(satisfies(block_array[i], ps...)){
+          // std::cout<<"pushed"<<i<<"to active list"<<"\n";
           out.push_back(block_array[i]);
         }
       } 

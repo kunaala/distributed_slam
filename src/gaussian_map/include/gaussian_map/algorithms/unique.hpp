@@ -30,6 +30,7 @@
 #ifndef UNIQUE_HPP
 #define UNIQUE_HPP
 #include <gaussian_map/octant_ops.hpp>
+#include <gaussian_map/pointDs.h>
 
 namespace se {
 namespace algorithms {
@@ -46,12 +47,17 @@ namespace algorithms {
       return end;
     }
 
-  template <typename KeyT>
-    inline int filter_ancestors(KeyT* keys, int num_keys, const int max_depth, KeyT* keyList, int* num_keys_per_block) {
+  template <typename strKey>
+    inline int filter_ancestors(strKey* keys, int num_keys, const int max_depth, strKey* keyList, int* num_keys_per_block) {
+      if(num_keys==0) return 0;
       int e = 0;
       int count = 0;
       for (int i = 0; i < num_keys; ++i){
-        keyList[i] = keys[i];
+        keyList[i].hash = keys[i].hash;
+        // std::cout<<keys[i].hash<<"\n";
+        keyList[i].pt = keys[i].pt;
+        keyList[i].sdf = keys[i].sdf;
+        keyList[i].typeAlloc = keys[i].typeAlloc;
         if(descendant(keys[i].hash, keys[e].hash, max_depth)){
           count++;
           keys[e] = keys[i];
@@ -62,6 +68,7 @@ namespace algorithms {
           keys[++e] = keys[i];
         }
       }
+      num_keys_per_block[e] = count;
       return e + 1;
     }
 

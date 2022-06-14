@@ -516,6 +516,7 @@ Node<T> * Octree<T>::insert(const int x, const int y, const int z,
     Node<T>* tmp = n->child(childid);
     if(!tmp){
       const key_t prefix = keyops::code(key) & MASK[d + shift];
+      // std::cout<<"Insert\n"<<Eigen::Vector3i(unpack_morton(prefix))<<"\n";
       if(edge == blockSide) {
         tmp = block_buffer_.acquire_block();
         static_cast<VoxelBlock<T> *>(tmp)->coordinates(
@@ -803,7 +804,7 @@ bool Octree<T>::allocate(key_t *keys, int num_elem){
 // std::sort(keys, keys+num_elem);
 // #endif
 
-//   num_elem = algorithms::filter_ancestors(keys, num_elem, max_level_);
+  // num_elem = algorithms::filter_ancestors(keys, num_elem, max_level_);
   reserveBuffers(num_elem);
 
   int last_elem = 0;
@@ -811,9 +812,11 @@ bool Octree<T>::allocate(key_t *keys, int num_elem){
 
   const int leaves_level = max_level_ - log2(blockSide);
   const unsigned int shift = MAX_BITS - max_level_ - 1;
+
   for (int level = 1; level <= leaves_level; level++){
     const key_t mask = MASK[level + shift] | SCALE_MASK;  //Represents the mask corresponding to the level
-    compute_prefix(keys, keys_at_level_, num_elem, mask); //Computes the 
+    compute_prefix(keys, keys_at_level_, num_elem, mask); //Computes the morton code prefix after masking
+    
     last_elem = algorithms::unique_multiscale(keys_at_level_, num_elem, 
         SCALE_MASK, level);
     success = allocate_level(keys_at_level_, last_elem, level);
@@ -846,12 +849,10 @@ bool Octree<T>::allocate_level(key_t* keys, int num_tasks, int target_level){
     Node<T> ** n = &root_;
     key_t myKey = keyops::code(keys[i]);
     int edge = size_/2;
-
     for (int level = 1; level <= target_level; ++level){
       int index = child_id(myKey, level, max_level_); 
       Node<T> * parent = *n;
       n = &(*n)->child(index);
-
       if(!(*n)){
         if(level == leaves_level){
           *n = block_buffer_.acquire_block();

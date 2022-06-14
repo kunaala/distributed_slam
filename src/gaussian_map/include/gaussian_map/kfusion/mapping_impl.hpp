@@ -54,11 +54,8 @@ struct sdf_update {
 		// }
 	} 
 
-	sdf_update(const float * d, float m, int mw) : 
-		depth(d), mu(m), maxweight(mw){};
-
-	const float * depth;
-	Eigen::Vector2i depthSize;
+	sdf_update(float m, int mw) : 
+		mu(m), maxweight(mw){};
 	float mu;
 	int maxweight;
 };
