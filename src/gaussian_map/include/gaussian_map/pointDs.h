@@ -8,7 +8,7 @@
 template<typename HashType>
 struct pointVals {
     HashType hash;
-    Eigen::Vector3f pt;
+    Eigen::Vector3i pt;
     float sdf;
     bool typeAlloc; /**< 0-> Block 1-> Node */
 };

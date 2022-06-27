@@ -54,11 +54,13 @@ public:
   key_t code_;
   unsigned int side_;
   unsigned char children_mask_;
+  // unsigned int isNotBlock;
 
   Node(){
     code_ = 0;
     side_ = 0;
     children_mask_ = 0;
+    // isNotBlock = 0;
     for (unsigned int i = 0; i < 8; i++){
       value_[i]     = init_val();
       child_ptr_[i] = NULL;
@@ -94,6 +96,7 @@ class VoxelBlock: public Node<T> {
     typedef typename traits_type::value_type value_type;
     static constexpr unsigned int side = BLOCK_SIDE;
     static constexpr unsigned int sideSq = side*side;
+    // unsigned int isNotBlock;
 
     static constexpr value_type empty() { 
       return traits_type::empty(); 
@@ -104,6 +107,7 @@ class VoxelBlock: public Node<T> {
 
     VoxelBlock(){
       coordinates_ = Eigen::Vector3i::Constant(0);
+      // isNotBlock = 1;
       for (unsigned int i = 0; i < side*sideSq; i++)
         voxel_block_[i] = initValue();
     }

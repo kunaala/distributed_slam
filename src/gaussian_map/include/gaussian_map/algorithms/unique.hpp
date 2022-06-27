@@ -48,16 +48,12 @@ namespace algorithms {
     }
 
   template <typename strKey>
-    inline int filter_ancestors(strKey* keys, int num_keys, const int max_depth, strKey* keyList, int* num_keys_per_block) {
+    inline int filter_ancestors(strKey* keys, int num_keys, const int max_depth,  int* num_keys_per_block) {
       if(num_keys==0) return 0;
       int e = 0;
       int count = 0;
       for (int i = 0; i < num_keys; ++i){
-        keyList[i].hash = keys[i].hash;
-        // std::cout<<keys[i].hash<<"\n";
-        keyList[i].pt = keys[i].pt;
-        keyList[i].sdf = keys[i].sdf;
-        keyList[i].typeAlloc = keys[i].typeAlloc;
+        
         if(descendant(keys[i].hash, keys[e].hash, max_depth)){
           count++;
           keys[e] = keys[i];
@@ -71,6 +67,7 @@ namespace algorithms {
       num_keys_per_block[e] = count;
       return e + 1;
     }
+
 
   template <typename KeyT>
     inline int unique_multiscale(KeyT* keys, int num_keys,
@@ -89,6 +86,10 @@ namespace algorithms {
       }
       return e + 1;
     }
+  
+  
+
+    
 }
 }
 #endif

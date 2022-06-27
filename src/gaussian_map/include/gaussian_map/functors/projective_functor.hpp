@@ -80,6 +80,7 @@ namespace functor {
 			};
 			auto is_active_predicate = [](const se::VoxelBlock<FieldType>* b) {
 				return b->active();
+
 			};
 			/**
 			 * removes blocks not part of current active list
@@ -93,7 +94,7 @@ namespace functor {
 			bool is_visible = false;
 			if(kind==0) {
 				for(unsigned int idx = start;idx<end;idx++) {
-					VoxelBlockHandler<FieldType> handler = {block, unpack_morton(_old_allocList[idx].hash)};
+					VoxelBlockHandler<FieldType> handler = {block, _old_allocList[idx].pt};
 					_function(handler, _old_allocList[idx].sdf);
 				}
 			}
@@ -101,7 +102,8 @@ namespace functor {
 				for(unsigned int idx = start;idx<end;idx++) {
 					// if(_allocList[idx].typeAlloc!=0) std::cout<<"Not block"<<'\n';
 					// else std::cout<<"Yes block\n";
-					VoxelBlockHandler<FieldType> handler = {block, unpack_morton(_allocList[idx].hash)};
+					VoxelBlockHandler<FieldType> handler = {block, _allocList[idx].pt};
+					// VoxelBlockHandler<FieldType> handler = {block, unpack_morton(block->code_)};
 					_function(handler, _allocList[idx].sdf);
 				}
 			}
@@ -137,6 +139,7 @@ namespace functor {
 		void update_node(se::Node<FieldType> * node, int kind, const float voxel_size, const int idx) {
 			const Eigen::Vector3i voxel = Eigen::Vector3i(unpack_morton(node->code_));
 			int i = (int)(node->code_)>>9;
+			std::cout<<node->code_<<"Node coors------\n";
 			NodeHandler<FieldType> handler = {node, i};
 			if(kind==0) _function(handler, _old_allocList[idx].sdf);
 			else _function(handler, _allocList[idx].sdf);
@@ -171,55 +174,61 @@ namespace functor {
 			build_active_list();
 			const float voxel_size = _map.dim() / _map.size();
 			size_t list_size = _active_list.size();
-			std::cout<<"active list size"<<list_size<<"\n";
+			std::cout<<"Active List size Blocks:- -- - - -- - - -- - ----- "<<list_size<<"\n";
 
-			int prev_new = 0;
+			unsigned int prev_new = 0;
 			unsigned int i = 0;
+			/**< sort previously allocated blocks */
+			std::sort(_active_list.data(), _active_list.data() + num_prealloc_blocks_, [](const auto& aa, const auto& bb){return aa->code_<bb->code_;});
+			std::cout<<"Active list hashes print -----\n";
+			for(int qq=0; qq < list_size; qq++) std::cout<<_active_list[qq]->code_<<"\t";
+			std::cout<<"\n";
 			#pragma omp parallel for
 			for(; i < num_prealloc_blocks_; i++) {
-				// std::cout<<_active_list[i]->coordinates()<<"block -------------\n";
-				// std::cout<<_old_keycount_per_block[i]<<"keycount -------------\n";
+				std::cout<<_active_list[i]->coordinates()<<"block -------------\n";
+				std::cout<<"keycount -------------:"<<_old_keycount_per_block[i]<<"\n";
+				std::cout<<_active_list[i]->code_<<"Active block code.....\n";
+				std::cout<<_old_allocList[prev_new].hash<<"List code---\n";
 				update_block(_active_list[i], 0, voxel_size, prev_new, prev_new+_old_keycount_per_block[i]);
 				prev_new += _old_keycount_per_block[i];
 			}
 			unsigned int prev = 0;
-			// std::cout<<"Active List size Blocks:- -- - - -- - - -- - ----- "<<list_size<<"\n";
 
 			#pragma omp parallel for
 			for(; i < list_size; ++i){
 				// std::cout<<"noe"<<_active_list[i]<<" "<<_keycount_per_block[i]<<"\n";
-				// std::cout<<_active_list[i]->coordinates()<<"block -------------\n";
-				// std::cout<<_keycount_per_block[i-num_prealloc_blocks_]<<"keycount -------------\n";
+				std::cout<<_active_list[i]->coordinates()<<"block -------------\n";
+				std::cout<<_keycount_per_block[i-num_prealloc_blocks_]<<"keycount -------------\n";
 				update_block(_active_list[i], 1, voxel_size, prev, prev+_keycount_per_block[i-num_prealloc_blocks_]);
 				prev += _keycount_per_block[i-num_prealloc_blocks_];
 			}
 			_active_list.clear();
-			
 			std::cout<<"cleared active list"<<'\n';
+
 			auto& nodes_list = _map.getNodesBuffer();
 			list_size = nodes_list.size();
-			// std::cout<<"Active List size Nodes:- -- - - -- - - -- - ----- "<<list_size<<"\n";
-			i = 0;
+			std::cout<<"Active List size Nodes:- -- - - -- - - -- - ----- "<<list_size<<"\n";
+			// i = 0;
 			// std::cout<<" num nodes"<<list_size<<'\n';
-			#pragma omp parallel for
-			for(; i < num_prealloc_nodes_; ++i){
-				update_node(nodes_list[i], 0, voxel_size, prev_new);
-				prev_new++;
-			}
+			// #pragma omp parallel for
+			// for(; i < num_prealloc_nodes_; ++i){
+			// 	update_node(nodes_list[i], 0, voxel_size, prev_new);
+			// 	prev_new++;
+			// }
 
-			#pragma omp parallel for
-			for(; i < list_size; ++i){
-				update_node(nodes_list[i], 1, voxel_size,prev);
-				prev++;
-			}
+			// #pragma omp parallel for
+			// for(; i < list_size; ++i){
+			// 	update_node(nodes_list[i], 1, voxel_size,prev);
+			// 	prev++;
+			// }
 		}
 
 		private:
 			MapT<FieldType>& _map; 
 			UpdateF _function; 
-			Sophus::SE3f _Tcw;
-			Eigen::Matrix4f _K;
-			Eigen::Vector2i _frame_size;
+			// Sophus::SE3f _Tcw;
+			// Eigen::Matrix4f _K;
+			// Eigen::Vector2i _frame_size;
 			std::vector<se::VoxelBlock<FieldType>*> _active_list;
 			PointStr* _allocList;
 			PointStr* _old_allocList;
@@ -228,6 +237,7 @@ namespace functor {
 			int num_elem_;
 			int num_prealloc_blocks_;
 			int num_prealloc_nodes_;
+
   	};
 
 	template <typename FieldType, template <typename FieldT> class MapT, 

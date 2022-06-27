@@ -805,6 +805,7 @@ bool Octree<T>::allocate(key_t *keys, int num_elem){
 // #endif
 
   // num_elem = algorithms::filter_ancestors(keys, num_elem, max_level_);
+  /**<reserves num_elem blocks in block buffers*/ 
   reserveBuffers(num_elem);
 
   int last_elem = 0;
@@ -817,8 +818,7 @@ bool Octree<T>::allocate(key_t *keys, int num_elem){
     const key_t mask = MASK[level + shift] | SCALE_MASK;  //Represents the mask corresponding to the level
     compute_prefix(keys, keys_at_level_, num_elem, mask); //Computes the morton code prefix after masking
     
-    last_elem = algorithms::unique_multiscale(keys_at_level_, num_elem, 
-        SCALE_MASK, level);
+    last_elem = algorithms::unique_multiscale(keys_at_level_, num_elem,SCALE_MASK, level);
     success = allocate_level(keys_at_level_, last_elem, level);
   }
   return success;
@@ -843,6 +843,7 @@ bool Octree<T>::allocate_level(key_t* keys, int num_tasks, int target_level){
 
   int leaves_level = max_level_ - log2(blockSide);
   nodes_buffer_.reserve(num_tasks);
+  std::cout<<num_tasks<<"--Num tasks\n\n\n\n";
 
 #pragma omp parallel for
   for (int i = 0; i < num_tasks; i++){
@@ -860,6 +861,7 @@ bool Octree<T>::allocate_level(key_t* keys, int num_tasks, int target_level){
           static_cast<VoxelBlock<T> *>(*n)->coordinates(Eigen::Vector3i(unpack_morton(myKey)));
           static_cast<VoxelBlock<T> *>(*n)->active(true);
           static_cast<VoxelBlock<T> *>(*n)->code_ = myKey | level;
+          // static_cast<VoxelBlock<T> *>(*n)->isNotBlock = 0;
           parent->children_mask_ = parent->children_mask_ | (1 << index);
         }
         else  {
@@ -877,7 +879,9 @@ bool Octree<T>::allocate_level(key_t* keys, int num_tasks, int target_level){
 template <typename T>
 bool Octree<T>::checkLevel(const key_t n) {
   int leaves_level = max_level_ - log2(blockSide);
+  std::cout<<"leaves level - "<<leaves_level<<"\n";
   int lev = keyops::level(n);
+  std::cout<<"curr level - "<<lev<<"\n";
   if(lev==leaves_level) return true;
   else return false;
 }

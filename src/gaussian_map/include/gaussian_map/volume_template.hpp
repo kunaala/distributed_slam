@@ -30,6 +30,7 @@
 #define VOLUME_TEMPLATE_H
 
 #include <iostream>
+
 #include <memory>
 #include <gaussian_map/voxel_traits.hpp>
 #include <gaussian_map/utils/memory_pool.hpp>

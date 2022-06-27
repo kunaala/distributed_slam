@@ -34,8 +34,8 @@ class slam {
         Eigen::Vector3i volume_dimension_;
         std::vector<struct pointVals<se::key_t>> allocation_list_;
         std::vector<struct pointVals<se::key_t>> prev_alloc_list_;
-        std::vector<struct pointVals<se::key_t>> ordered_alloc_list_;
-        std::vector<struct pointVals<se::key_t>> prev_ordered_alloc_list_;
+        std::vector<struct pointVals<se::key_t>> unfiltered_alloc_list_;
+        std::vector<struct pointVals<se::key_t>> prev_unfiltered_alloc_list_;
         std::vector<int> keycount_per_block_;
         std::vector<int> prev_keycount_per_block_;
         std::vector<float> float_depth_;
@@ -100,6 +100,8 @@ class slam {
          * \return Returns true if mapping succesful. False if not or data complete.
          */
         bool mapNext();
+
+        unsigned int update_count_ =0;
 
 };
 #endif
