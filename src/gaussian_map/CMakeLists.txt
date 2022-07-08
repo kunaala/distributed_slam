@@ -30,7 +30,8 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 
 add_library(${PROJECT_NAME}_core
-	lib/gpModel.cpp
+	lib/SparseGp.cpp
+	# lib/gpModel.cpp
 	lib/dataloader.cpp
 	lib/robot.cpp
 	lib/slam.cpp

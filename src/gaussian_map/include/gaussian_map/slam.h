@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <algorithm>
+#include <chrono>
 #include <Eigen/Dense>
 #include "config.h"
 #include <gaussian_map/octree.hpp>
@@ -19,6 +20,7 @@
 #include<gaussian_map/volume_template.hpp>
 #include "gaussian_map/algorithms/unique.hpp"
 #include "gaussian_map/functors/projective_functor.hpp"
+#include "gaussian_map/SparseGp.hpp"
 
 
 
@@ -49,7 +51,18 @@ class slam {
         float ps_grid_res_ = 0.1;
         float mu_ = 3.f;
         float maxWeight_ = 100.f;
+        const unsigned int num_pseudo_pts_=9;
+
         Eigen::VectorXf angle_vec_;
+        //------------------------//
+        std::pair<Eigen::MatrixXf,std::vector<float>> gen_pseudo_pts(Eigen::VectorXf range_vals);
+        Eigen::MatrixXf gen_test_pts(Eigen::MatrixX3i block_centers, const unsigned int blockSide, float voxelsize);
+
+        void  predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, 
+                        unsigned int num_elem, float voxelsize);
+        
+
+
 
     public:
         /**

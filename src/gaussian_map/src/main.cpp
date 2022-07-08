@@ -8,7 +8,7 @@ int main(int argc, char** argv){
   std::string datafile = "intel.gfs.log";
   float pseudo_grid_res = 0.2, trunc_band=0.1;
   slam maslam(vol_res,vol_dim,datafile,pseudo_grid_res,trunc_band);
-  for (unsigned int i=0;i<200;i++){
+  for (unsigned int i=0;i<2000;i++){
     maslam.mapNext();
   }
 
