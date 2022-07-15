@@ -84,16 +84,17 @@ void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D){
     /**
      * D = {X_train, X_m, F_train, F_m, X_test}
      **/
+    Eigen::MatrixXf X_test = D.at(4);
     Eigen::MatrixXf Knn = SparseGp::kernel(D.at(0),D.at(0));
     Eigen::MatrixXf Kmm = SparseGp::kernel(D.at(1),D.at(1));
     Eigen::MatrixXf Kmn = SparseGp::kernel(D.at(1),D.at(0));
-    Eigen::MatrixXf Kmt = SparseGp::kernel(D.at(1),D.at(4));
-    Eigen::MatrixXf Ktt = SparseGp::kernel(D.at(4),D.at(4));
+    Eigen::MatrixXf Kmt = SparseGp::kernel(D.at(1),X_test);
+    Eigen::MatrixXf Ktt = SparseGp::kernel(X_test,X_test);
     Eigen::LLT<Eigen::MatrixXf> L_Kmm;
     L_Kmm.compute(Kmm);
 
     //Not used  
-    //Eigen::MatrixXf pseudo_mu= Kmn.transpose()*L_Kmm.solve(F_m);
+    //Eigen::MatrixXf pseudo_mu= Kmn.transpose()*L_Kmm.solve(D.at(3));
     //IID assumption
     Eigen::VectorXd lambda = (Knn.diagonal() - (Kmn.transpose()*L_Kmm.solve(Kmn)).diagonal()).cast<double>();
      /**
@@ -112,11 +113,58 @@ void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D){
     Eigen::LLT<Eigen::MatrixXf> L_Qm;
     L_Qm.compute(Qm);
     Eigen::MatrixXf mu_t = Kmt.transpose()*L_Qm.solve(Kmn*lambda_inv.asDiagonal()*D.at(2)); // D.at(2) = F_train
-    D.push_back(mu_t);
     Eigen::VectorXf covar_t = Ktt.diagonal() -  (Kmt.transpose()*(L_Kmm.solve(Kmt) - L_Qm.solve(Kmt))).diagonal() ;
+
+    //Flushing training and pseudo datasets
+    D.clear();
+    // Storing all points with SDF vals X_test, their SDF vals mu_t and covariance 
+    D.push_back(X_test);
+    D.push_back(mu_t);
     D.push_back(covar_t);
 
 }
+
+/**
+ * @brief Overloaded GP posterior prediction using Z matrix
+ * 
+ * @param D 
+ * @param m number of sdf value updates of training data 
+ */
+void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D, Eigen::VectorXf m){
+    
+    /**
+     * D = {X_train, F_train, X_test}
+     **/
+    Eigen::MatrixXf X_test = D.at(2);
+    Eigen::MatrixXf K = kernel(D.at(0),D.at(0));
+    Eigen::MatrixXf K_t = kernel(X_test,D.at(0));
+    Eigen::MatrixXf K_tt = kernel(X_test,X_test);
+    float noise_var = 0.01;
+    Eigen::MatrixXf M = noise_var * m.cwiseInverse().asDiagonal();
+    Eigen::MatrixXf Z = K + M;
+    Eigen::LLT<Eigen::MatrixXf> L_Z;
+    L_Z.compute(Z);
+
+
+    Eigen::MatrixXf mu_t = K_t* L_Z.solve(D.at(1));
+    //IID assumption
+        // std::cout<<"herheoutnmdsnd\t"<<L_Z.solve(K_t.transpose()).rows()<<"x"<<L_Z.solve(K_t.transpose()).cols()<<" \n"; 
+
+
+    Eigen::VectorXf covar_t = K_tt.diagonal() - (K_t*L_Z.solve(K_t.transpose())).diagonal();
+    std::cout<<"herhehr\n";
+
+    //Flushing training and pseudo datasets
+    D.clear();
+    // Storing all points with SDF vals X_test, their SDF vals mu_t and covariance 
+    D.push_back(X_test);
+    D.push_back(mu_t);
+
+    D.push_back(covar_t);
+
+
+}
+
 
 
 
@@ -146,7 +194,7 @@ void SparseGp::save_data(Eigen::MatrixXf M, std::string filename ){
 //      **/
 //     sgp.posterior(D);
 //     /**
-//      * D = {X_train, X_m, F_train,F_m, X_test, mu_t,covar_t}
+//      * D = {X_test, mu_t,covar_t}
 //      **/
 //     for(auto i:D)     sgp.save_data(i.transpose(),"plot.csv");
     

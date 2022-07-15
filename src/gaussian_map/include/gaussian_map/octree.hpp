@@ -452,8 +452,8 @@ inline VoxelBlock<T> * Octree<T>::fetch(const int x, const int y,
   }
 
   // Get the block.
-  unsigned edge = size_ / 2;
-  for(; edge >= blockSide; edge /= 2){
+  
+  for(unsigned edge = size_ / 2; edge >= blockSide; edge /= 2){
     n = n->child((x & edge) > 0u, (y & edge) > 0u, (z & edge) > 0u);
     if(!n){
       return NULL;

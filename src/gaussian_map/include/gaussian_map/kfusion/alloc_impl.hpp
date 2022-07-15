@@ -22,7 +22,7 @@
 
 template <typename FieldType, template <typename> class OctreeT, typename HashType>
 unsigned int buildAllocationList(HashType* allocationList, size_t reserved, HashType* oldAllocList, float* sdf_vals,
-                            const Eigen::Matrix<float,180*9,3> mapPts, OctreeT<FieldType>& map_index,
+                            const Eigen::MatrixXf mapPts, OctreeT<FieldType>& map_index,
                             const unsigned int num_pts, int &prev_alloc_size,
                             const unsigned int size, const float voxelSize, const float band) {
     
@@ -40,7 +40,9 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, Hash
 #pragma omp parallel for
     for(int i=0;i<num_pts;i++) {
         Eigen::Vector3i voxel;
+
         Eigen::Vector3f voxelPos = mapPts.row(i);
+
         Eigen::Vector3f voxelScaled = (voxelPos * inverseVoxelSize).array().floor();
         if( (voxelScaled.x() < size) && (voxelScaled.y() < size) && 
             (voxelScaled.z() < size) && (voxelScaled.x() >= 0) &&
@@ -48,14 +50,14 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, Hash
             
             voxel = voxelScaled.cast<int>();
             /**< get the Block coordinates */
-            se::VoxelBlock<FieldType> * n = map_index.fetch(voxel.x(), voxel.y(), voxel.z());
+            se::VoxelBlock<FieldType> *n = map_index.fetch(voxel.x(), voxel.y(), voxel.z());
             // std::cout<<voxel<<"\n";
             se::key_t k = map_index.hash(voxel.x(), voxel.y(), voxel.z(), block_scale);
-            // std::cout<<k<<"hash is this---------\n";
+            // std::cout<<voxel.x()<<","<< voxel.y()<<","<<voxel.z()<<" allocated to block---------"<<k<<"\n";
             if(!n) {
                 // se::key_t k = map_index.hash(voxel.x(), voxel.y(), voxel.z(), block_scale);
                 unsigned int idx = voxelCount++;
-                if(idx < reserved) {
+                // if(idx < reserved) {
                     allocationList[idx].pt = voxel;
                     allocationList[idx].hash = k;
                     allocationList[idx].sdf = sdf_vals[i];
@@ -68,8 +70,8 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, Hash
                     //     std::cout<<"HHahahahahahhahahahahahahahahahahhahaha\n";
                     //     allocationList[idx].typeAlloc = 1;
                     // }
-                }
-                else break;
+                // }
+                // else break;
             }
             else {
                 oldAllocList[oldCount].pt = voxel;

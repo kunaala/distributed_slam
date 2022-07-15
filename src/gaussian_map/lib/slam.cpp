@@ -2,7 +2,7 @@
 
 
 slam::slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim,std::string datafile, float ps_grid_res, float mu):
-            agentT_(Eigen::Matrix4f::Identity()), dataseq_(datafile,0), angle_vec_(180){
+            agentT_(Eigen::Matrix4f::Identity()), dataseq_(datafile,0){
     volume_dimension_ = vol_dim;
     volume_resolution_ = vol_res;
     dataFile_ = datafile;
@@ -14,128 +14,92 @@ slam::slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim,std::str
     discrete_vol_ptr_->init(volume_resolution_.x(), volume_dimension_.x());
     volume_ = Volume<FieldType>(volume_resolution_.x(), volume_dimension_.x(), discrete_vol_ptr_.get());
 
-    for(int i=0;i<180;i++) {
-        angle_vec_[i]=thetai_ + i*ang_res_;
-    }
     
 }
 
-Eigen::Matrix<float, 9, 3> slam::getPseudoPts(const Eigen::Vector3f p, float grid_side) {
-    Eigen::Matrix<float, 9, 3> pts;
-    pts<<p(0)-grid_side, p(1)-grid_side, p(2),
-        p(0), p(1)-grid_side, p(2),
-        p(0)+grid_side, p(1)-grid_side, p(2),
-        p(0)-grid_side, p(1), p(2),
-        p(0), p(1), p(2),
-        p(0)+grid_side, p(1), p(2),
-        p(0)-grid_side, p(1)+grid_side, p(2),
-        p(0), p(1)+grid_side, p(2),
-        p(0)+grid_side, p(1)+grid_side, p(2);
-    return pts;
-}
-
-
-
-float slam::getSignedDist(const Eigen::Vector3f p1, const Eigen::Vector3f p2, const Eigen::Vector3f q) {
-    double dist = sqrt((p2(0)-p1(0))*(p2(0)-p1(0)) + (p1(1)-p2(1))*(p1(1)-p2(1)));
-    double val = abs((p2(0)-p1(0))*(p1(1)-q(1)) - (p1(0)-q(0))*(p2(1)-p1(1)));
-    return val/dist;
-}
-
-
-
-double slam::euclidDist(const Eigen::Vector3f p1, const Eigen::Vector3f p2) {
-    return (p1-p2).squaredNorm();
-}
-
-std::pair<Eigen::MatrixXf,std::vector<float>> slam::gen_pseudo_pts(Eigen::VectorXf range_vals){
-    /**
-     * @brief 1. Generates num_pseudo_pts with reference to laser hit point
-     * @brief 2. calculates their sdf values using getSignedDist function
-     * @brief 3. Converts all pseudo points(includes hit points) into World Frame
-     */
-    std::vector<float> sdf_vals;
-    Eigen::VectorXf vals = range_vals;
-    // Eigen::Matrix<float,3,Eigen::Dynamic> pts_body; /**<3D vector*/
-    Eigen::Vector3f curr_pt;
-    curr_pt<<   cos(angle_vec_(0))*vals(0), 
-                sin(angle_vec_(0))*vals(0), 
-                0.0;
-    Eigen::MatrixXf mapPts_robotFrame(180*num_pseudo_pts_,3);
-
-    for(int i=1;i<180;i++) {
-        Eigen::Vector3f pt;
-        pt<<    cos(angle_vec_(i))*vals(i),
-                sin(angle_vec_(i))*vals(i),
-                0.0;
-        Eigen::MatrixXf  ps_pts = getPseudoPts(curr_pt,ps_grid_res_);
-        mapPts_robotFrame.block(i,0,num_pseudo_pts_,3) = ps_pts;
-        for(int j=0;j<num_pseudo_pts_;j++) {
-            float d = getSignedDist(curr_pt, pt, ps_pts.row(j));
-            sdf_vals.push_back(d);
-        }
-        curr_pt = pt;
-    }
-    // std::clamp(float_sdf,mu_,-mu_);
-    Eigen::Matrix<float,180*9,3> mapPts_worldFrame = agentT_.bodyToWorld(mapPts_robotFrame.transpose()).transpose();
-
-    return std::make_pair(mapPts_worldFrame,sdf_vals);
-
-}
-
-Eigen::MatrixXf slam::gen_test_pts(Eigen::MatrixX3i block_centers, const unsigned int blockSide, float voxelsize){
-    Eigen::MatrixXf test_pts(block_centers.rows()*blockSide*blockSide,3);
-    Eigen::VectorXf lin_v(Eigen::VectorXf::LinSpaced(blockSide+1,-(blockSide*voxelsize/2),blockSide*voxelsize/2));
+/**
+ * @brief Retrieves SDF value at *voxelPos* from the octree *map_index*  
+ * 
+ * @param map_index 
+ * @param voxelPos Matrix with rows as voxel locations
+ * @param vector of sdf_data for all voxelPos
+ * @return se::VoxelBlock<FieldType>::value_type 
+ */
+std::vector<se::VoxelBlock<FieldType>::value_type> slam::retrieve_sdf(se::Octree<FieldType> *map_index, Eigen::MatrixX3f voxelPos){
     
-    for(unsigned int c=0;c<block_centers.rows();c++){
-        for(unsigned int i=0;i<blockSide;i++){
-            for(unsigned int j=0;j<blockSide;j++)   {
-                Eigen::RowVector3f pt;
-                pt << lin_v[i], lin_v[j], block_centers(c,2);
-                test_pts.row(c*blockSide*blockSide + i*blockSide+j) = pt;
-            }
-
+    std::vector<se::VoxelBlock<FieldType>::value_type> sdf_data;
+    for(unsigned int i=0;i<voxelPos.rows();i++){
+        Eigen::Vector3f voxelScaled = (voxelPos.row(i) *(1.f/voxel_size_)).array().floor();
+        Eigen::Vector3i voxel = voxelScaled.cast<int>();
+        se::VoxelBlock<FieldType> *block= map_index->fetch(voxel.x(), voxel.y(), voxel.z());
+        if (block){
+            VoxelBlockHandler<FieldType> handler = {block, voxel};
+            sdf_data.push_back(handler.get());
         }
-    }
-    return test_pts;
+        else{
+            se::VoxelBlock<FieldType>::value_type temp_data;
+            temp_data.x = 0.f;
+            temp_data.y = 1;
+            sdf_data.push_back(temp_data);
+        }
+    }   
+    return sdf_data;	
+
 }
-void  slam::predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, unsigned int num_elem, float voxelsize){
+
+
+void  slam::predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, unsigned int num_elem, float voxel_size_, 
+                        Eigen::VectorXf m){
     std::vector<se::VoxelBlock<FieldType>*> block_list;
     const unsigned int blockSide = map_index->blockSide;
     block_list.reserve(num_elem);
     map_index->getBlockList(block_list,0);
     Eigen::MatrixXi block_centers(num_elem,3);
     for(unsigned int b=0;b<num_elem;b++) {
-        // std::cout<<"block coordinates of "<<b<<"\n"<<block_list[b]->coordinates()<<"blocks\n";
         block_centers.row(b) = block_list[b]->coordinates().transpose();
     }
-    Eigen::MatrixXf test_pts = slam::gen_test_pts(block_centers,blockSide,voxelsize);
     /**
-     * @brief Test point set includes 
-     * 
+     * @brief Test point set includes hit points and pseudo points as
+     * 1. To avoid discontinuities  due to  local kriging , the newly allocated blocks are pooled together
+     *  as training and pseudo datasets
+     * 2. The prediction model is expected to predict sdf values of hit and pseudo points based on its neigbouring blocks
+     *     creating smooth continuous surfaces
      */
-    D.push_back(test_pts(Eigen::placeholders::all,Eigen::seqN(0,2)));
-    std::cout<<"==========Generated test points ===========\n";
+    Eigen::MatrixXf X_test = gen_test_pts(block_centers,blockSide,voxel_size_);
+    D.push_back(X_test(Eigen::placeholders::all,Eigen::seqN(0,2)));
+    std::cout<<"==========Generated "<<X_test.rows()<<" test points ===========\n";
     /**
      * D = {X_train, X_m, F_train, F_m, X_test}
      **/
-    SparseGp sgp;  
+     
     std::cout<<"======Prediction starts=======\n";  
     auto tic = std::chrono::high_resolution_clock::now();
-    D.push_back(test_pts(Eigen::placeholders::all,Eigen::seqN(0,2)));
-    sgp.posterior(D);
+    SparseGp sgp; 
+    sgp.posterior(D,m);
     auto toc = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(toc-tic);
     std::cout<<"==========completed prediction in "<<duration.count()<<"seconds========\n";
-
-    // /**
-    //  * D = {X_train, X_m, F_train,F_m, X_test, mu_t,covar_t}
-    //  **/
-    // for(auto i:D)     sgp.save_data(i.transpose(),"plot.csv");
+    /**
+     * D = {X_test, mu_t,covar_t}
+     **/
+    std::vector<int8_t> flat_map(6000*6000,-1);
+    int xMin =-300;
+    int yMin =-300;
+    int xMax =300;
+    int yMax =300;
+    int numX = xMin/0.1;
+    int numY = yMin/0.1;
+    Eigen::MatrixXf X_pred = D.at(0);
+    for(unsigned int i=0;i<X_pred.rows();i++) {
+        flat_map[int(X_pred(i,0) + numX)*6000 + int(X_pred(i,1)+numY)] = int8_t(100*(D.at(1)(i)-yMin)/(yMax-yMin));
+    }
 
 }
 
 
+
+
+				
 bool slam::mapNext() {
     std::pair<int,Eigen::VectorXf> dataPoint = dataseq_.getNextPoint();
     if(dataPoint.first==0) { /**<ODOM datapoint*/
@@ -161,31 +125,43 @@ bool slam::mapNext() {
 
     else if(dataPoint.first==1) { //Lidar scan datapoint
         
-        std::pair<Eigen::MatrixXf, std::vector<float>> temp = slam::gen_pseudo_pts(dataPoint.second);
+        std::pair<Eigen::MatrixXf, std::vector<float>> temp = gen_pseudo_pts(dataPoint.second, ps_grid_res_, num_pseudo_pts_);
 
         std::vector<Eigen::MatrixXf> D;
-        /**<Extracting middle of pseudo grid i.e, Laser hit point*/
+        // Convert pseudo poitns to world coordinates
+
         Eigen::MatrixXf X_m = temp.first;
-        Eigen::MatrixXf X_train = X_m(Eigen::seq(4,Eigen::placeholders::last,9),Eigen::seqN(0,2));
-        D.push_back(X_train);
+        X_m = agentT_.bodyToWorld(X_m.transpose()).transpose();
+        // TODO : Data centering/Averaging - does not affect TSDF posterior 
+        /**<Extracting middle of pseudo grid i.e, Laser hit point*/
+
+
+
+        
+
+
+        /************WITH PSEUDO POINTS*******************/
+
         //Storing pseudo points
-        D.push_back(X_m(Eigen::placeholders::all,Eigen::seqN(0,2)));
+        // D.push_back(X_m(Eigen::placeholders::all,Eigen::seqN(0,2)));
 
         //Storing hit points SDF values
-        Eigen::Vector<float,180> boundary(Eigen::VectorXf::Zero(180));
-        D.push_back(boundary);
+        // Eigen::Vector<float,180> boundary(Eigen::VectorXf::Zero(180));
+        // D.push_back(boundary);
 
         // //Storing pseudo points SDF values
         std::vector<float> sdf_vals = temp.second;
-        Eigen::Vector<float,180*9> pseudoPts_sdfVals(sdf_vals.data());
-        D.push_back(pseudoPts_sdfVals);
+        // Eigen::Vector<float,180*9> pseudoPts_sdfVals(sdf_vals.data());
+        // D.push_back(pseudoPts_sdfVals);
+        /************WITH PSEUDO POINTS*******************/
+        
 
         
         
         // Update map
-        float voxelsize =  volume_._dim/volume_._size;
+        voxel_size_ =  volume_._dim/volume_._size;
 
-        // unsigned int num_vox_per_pt = volume_._dim/((se::VoxelBlock<FieldType>::side)*voxelsize);
+        // unsigned int num_vox_per_pt = volume_._dim/((se::VoxelBlock<FieldType>::side)*voxel_size_);
         unsigned int num_vox_per_pt = 1;
         size_t total = num_vox_per_pt * 180 * num_pseudo_pts_;
         allocation_list_.reserve(total);
@@ -194,14 +170,14 @@ bool slam::mapNext() {
         prev_alloc_list_.reserve(total);
         prev_unfiltered_alloc_list_.reserve(total);
         prev_keycount_per_block_.reserve(total);
+        predicted_keycount_per_block_.reserve(total);
         
         int prev_alloc_size = -1;
         update_count_++;
         std::cout<< update_count_ <<"th update"<<'\t'<<"--------------"<<'\n';
-
         unsigned int allocated = buildAllocationList(allocation_list_.data(), allocation_list_.capacity(), prev_alloc_list_.data(),
-                                    sdf_vals.data(), X_m, *volume_._map_index, 180*9, prev_alloc_size,
-                                    volume_._size, voxelsize, 2*mu_);
+                                    sdf_vals.data(), X_m, *volume_._map_index, 180*num_pseudo_pts_, prev_alloc_size,
+                                    volume_._size, voxel_size_, 2*mu_);
        
         struct less_than_key {
             inline bool operator() (const pointVals<se::key_t>& struct1, const pointVals<se::key_t>& struct2) {
@@ -232,11 +208,12 @@ bool slam::mapNext() {
                                                 keycount_per_block_.data());
         int prev_num_elem = se::algorithms::filter_ancestors(prev_alloc_list_.data(), prev_alloc_size, log2(volume_._size),
                                                 prev_keycount_per_block_.data());
+        std::cout<<"Allocation list before prediction--------------\n";
         for(unsigned int i=0;i<num_elem;i++) {
             std::cout<<allocation_list_[i].hash<<'\t'<<keycount_per_block_[i]<<"\t";
         }
-        for(unsigned int i=0;i<allocated;i++) std::cout<<unfiltered_alloc_list_[i].hash<<"\t";
-        std::cout<<"----------Prevs\n";
+        // for(unsigned int i=0;i<allocated;i++) std::cout<<unfiltered_alloc_list_[i].hash<<"\t";
+        std::cout<<"----------Previously allocated list \n";
         for(unsigned int i=0;i<prev_num_elem;i++) {
             std::cout<<prev_alloc_list_[i].hash<<'\t'<<prev_keycount_per_block_[i]<<"\t";
         }
@@ -269,17 +246,72 @@ bool slam::mapNext() {
         
         volume_._map_index->allocate(keys.data(), num_elem);
 
+        //Retrieving sdf values
+        // Add Z dimension
+        Eigen::MatrixXf X_train = X_m(Eigen::seq(4,Eigen::placeholders::last,9),Eigen::seqN(0,2));
+        D.push_back(X_train);
+        Eigen::MatrixXf X_trainer(X_train.rows(),3);
+        X_trainer.col(0) = X_train.col(0);
+        X_trainer.col(1) = X_train.col(1);
+        X_trainer.col(2) = Eigen::VectorXf::Zero(X_train.rows());
+        std::vector<se::VoxelBlock<FieldType>::value_type> sdf_data;
+        
+        sdf_data = retrieve_sdf(volume_._map_index, X_trainer);
+        Eigen::VectorXf F_train(X_train.rows()),m(X_train.rows());
 
-        slam::predict(D, volume_._map_index,num_elem, voxelsize);
+        for(unsigned int i=0;i<X_train.rows();i++){
+            F_train(i) = sdf_data.at(i).x;
+            m(i) = sdf_data.at(i).y;
+        }
+        D.push_back(F_train);
 
+        slam::predict(D, volume_._map_index,num_elem, voxel_size_, m);
+        
+        /**
+         * @brief Allocate predicted points in Octree
+         *  D = {X_test, mu_t,covar_t}
+         */
+        new_allocation_list_.reserve(0);
+        unsigned int num_predicted = D.at(1).size();
+        size_t prediction_size = num_vox_per_pt * num_predicted;
+        pred_allocation_list_.reserve(prediction_size);
+        std::vector<float> new_sdf_vals(num_predicted);
+        Eigen::VectorXf::Map(&new_sdf_vals[0], D.at(1).size()) = D.at(1);
+        Eigen::MatrixXf X_predicted(num_predicted,3);
+        X_predicted.col(0) = D.at(0).col(0);
+        X_predicted.col(1) = D.at(0).col(1);
+        X_predicted.col(2) = Eigen::VectorXf::Zero(num_predicted);
+
+        int allocated_before = -1;
+
+        unsigned int new_allocated = buildAllocationList(new_allocation_list_.data(), new_allocation_list_.capacity(), pred_allocation_list_.data(),
+                                    new_sdf_vals.data(),X_predicted, *volume_._map_index, num_predicted, allocated_before,
+                                    volume_._size, voxel_size_, 2*mu_);
+        std::cout<<"blocks updated after prediction: \t"<< allocated_before<<'\n';
+        std::cout<<"after prediction, BEFORE filtering: \n";
+        for(unsigned int i=0;i<allocated_before;i++) {
+            std::cout<<pred_allocation_list_[i].hash<<'\t';
+        }
+        std::cout<<'\n';
+        std::sort(pred_allocation_list_.data(),pred_allocation_list_.data() + allocated_before, 
+                                            [](const auto& i, const auto& j) {return i.hash < j.hash;});
+        int predicted_num_elem = se::algorithms::filter_ancestors(pred_allocation_list_.data(), allocated_before, log2(volume_._size),
+                                                predicted_keycount_per_block_.data());
+        // std::cout<<"after prediction, After filtering: \n";
+        // for(unsigned int i=0;i<allocated_before;i++) {
+        //     std::cout<<allocation_list_[i].hash<<'\t'<<predicted_keycount_per_block_[i]<<"\t";
+        // }
+        // std::cout<<'\n';
         return 0;
+        //***********************************************//
+        
         // const unsigned block_scale = log2(volume_._size) - se::math::log2_const(se::VoxelBlock<FieldType>::side);
-        // const float inverseVoxelSize = 1/voxelsize;
+        // const float inversevoxel_size_ = 1/voxel_size_;
         // for(int i=0;i<allocated;i++) {
         //     Eigen::Vector3f voxelPos = unfiltered_alloc_list_[i].pt;
         //     // Eigen::Vector3f voxelPos = allocation_list_[i].pt;
 
-        //     Eigen::Vector3f voxelScaled = (voxelPos * inverseVoxelSize).array().floor();
+        //     Eigen::Vector3f voxelScaled = (voxelPos * inversevoxel_size_).array().floor();
         //     Eigen::Vector3i voxel = voxelScaled.cast<int>();
 
         //     se::VoxelBlock<FieldType> * n = volume_._map_index->fetch(voxel.x(), voxel.y(), voxel.z());

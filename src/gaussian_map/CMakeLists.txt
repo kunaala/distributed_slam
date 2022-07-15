@@ -32,6 +32,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 add_library(${PROJECT_NAME}_core
 	lib/SparseGp.cpp
 	# lib/gpModel.cpp
+	# lib/MapPub.cpp
 	lib/dataloader.cpp
 	lib/robot.cpp
 	lib/slam.cpp
@@ -45,13 +46,8 @@ target_compile_definitions(${PROJECT_NAME}_core PUBLIC ${field_type})
 
 add_executable(gp_octree src/main.cpp)
 target_link_libraries(gp_octree  ${catkin_LIBRARIES} ${PROJECT_NAME}_core )
-# add_dependencies(gp_octree ${PROJ_DEPS})
+add_dependencies(gp_octree ${PROJ_DEPS})
 
-
-
-#add_executable(new_gaussian scripts/carmen_gaussian.cpp)
-#target_link_libraries(new_gaussian ${catkin_LIBRARIES} ${PROJECT_NAME}_core)
-#add_dependencies(new_gaussian ${PROJ_DEPS})
 
 install(TARGETS gp_octree
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

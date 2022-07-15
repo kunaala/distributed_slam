@@ -21,7 +21,7 @@
 #include "gaussian_map/algorithms/unique.hpp"
 #include "gaussian_map/functors/projective_functor.hpp"
 #include "gaussian_map/SparseGp.hpp"
-
+#include "gaussian_map/utils/gp_utils.h"
 
 
 
@@ -36,10 +36,14 @@ class slam {
         Eigen::Vector3i volume_dimension_;
         std::vector<struct pointVals<se::key_t>> allocation_list_;
         std::vector<struct pointVals<se::key_t>> prev_alloc_list_;
+        std::vector<struct pointVals<se::key_t>> new_allocation_list_;
+        std::vector<struct pointVals<se::key_t>> pred_allocation_list_;
+
         std::vector<struct pointVals<se::key_t>> unfiltered_alloc_list_;
         std::vector<struct pointVals<se::key_t>> prev_unfiltered_alloc_list_;
         std::vector<int> keycount_per_block_;
         std::vector<int> prev_keycount_per_block_;
+        std::vector<int> predicted_keycount_per_block_;
         std::vector<float> float_depth_;
         std::shared_ptr<se::Octree<FieldType> > discrete_vol_ptr_;
         Volume<FieldType> volume_;
@@ -52,15 +56,15 @@ class slam {
         float mu_ = 3.f;
         float maxWeight_ = 100.f;
         const unsigned int num_pseudo_pts_=9;
+        float voxel_size_;
 
-        Eigen::VectorXf angle_vec_;
         //------------------------//
-        std::pair<Eigen::MatrixXf,std::vector<float>> gen_pseudo_pts(Eigen::VectorXf range_vals);
-        Eigen::MatrixXf gen_test_pts(Eigen::MatrixX3i block_centers, const unsigned int blockSide, float voxelsize);
 
         void  predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, 
-                        unsigned int num_elem, float voxelsize);
-        
+                                unsigned int num_elem, float voxel_size_, Eigen::VectorXf m);
+        std::vector<se::VoxelBlock<FieldType>::value_type> retrieve_sdf(se::Octree<FieldType> *map_index, 
+                                                                        Eigen::MatrixX3f voxelPos);
+
 
 
 
@@ -75,37 +79,6 @@ class slam {
          * reconstructed volume in meters.
          */
         slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim, std::string datafile, float ps_grid_res, float mu);
-
-        /**
-         * Computes the location the pseudo points by placing a 3x3 grid on the laser hitpoint.
-         *
-         * \param[in] p 3x1 vector denoting the laser hitpoint.
-         * \param[in] grid_side length of the side of the pseudo point grid.
-         * \param[in] datafile string denoting the file location of the dataset.
-         * \param[in] mu the band width for the TSDF.
-         * \return Returns 9x3 matrix where each row is a pseudo point At
-         * the center of the 3x3 pseudo point grid.
-         */
-        Eigen::Matrix<float, 9, 3> getPseudoPts(const Eigen::Vector3f p, float grid_side);
-
-        /**
-         * Get the TSDF value of the target point using two consequtive laser hitpoints.
-         *
-         * \param[in] p1 3x1 vector denoting point one.
-         * \param[in] p2 3x1 vector denoting point two.
-         * \param[in] q 3x1 vector denoting the target point.
-         * \return Returns the TSDF value at target point.
-         */
-        float getSignedDist(const Eigen::Vector3f p1, const Eigen::Vector3f p2, const Eigen::Vector3f q);
-
-        /**
-         * Computes the euclidean distance between two points.
-         *
-         * \param[in] p1 3x1 vector point 1
-         * \param[in] p2 3x1 vector point 2.
-         * \return Returns the euclidean distance between two points.
-         */
-        double euclidDist(const Eigen::Vector3f p1, const Eigen::Vector3f p2);
 
         /**
          * Maps the next point from the data sequence.
