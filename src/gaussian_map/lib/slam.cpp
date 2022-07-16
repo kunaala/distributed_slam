@@ -82,17 +82,17 @@ void  slam::predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_
     /**
      * D = {X_test, mu_t,covar_t}
      **/
-    std::vector<int8_t> flat_map(6000*6000,-1);
-    int xMin =-300;
-    int yMin =-300;
-    int xMax =300;
-    int yMax =300;
-    int numX = xMin/0.1;
-    int numY = yMin/0.1;
-    Eigen::MatrixXf X_pred = D.at(0);
-    for(unsigned int i=0;i<X_pred.rows();i++) {
-        flat_map[int(X_pred(i,0) + numX)*6000 + int(X_pred(i,1)+numY)] = int8_t(100*(D.at(1)(i)-yMin)/(yMax-yMin));
-    }
+    // std::vector<int8_t> flat_map(6000*6000,-1);
+    // int xMin =-300;
+    // int yMin =-300;
+    // int xMax =300;
+    // int yMax =300;
+    // int numX = xMin/0.1;
+    // int numY = yMin/0.1;
+    // Eigen::MatrixXf X_pred = D.at(0);
+    // for(unsigned int i=0;i<X_pred.rows();i++) {
+    //     flat_map[int(X_pred(i,0) + numX)*6000 + int(X_pred(i,1)+numY)] = int8_t(100*(D.at(1)(i)-yMin)/(yMax-yMin));
+    // }
 
 }
 
