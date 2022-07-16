@@ -61,7 +61,7 @@ class slam {
         //------------------------//
 
         void  predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, 
-                                unsigned int num_elem, float voxel_size_, Eigen::VectorXf m);
+                                unsigned int num_elem, float voxel_size_);
         std::vector<se::VoxelBlock<FieldType>::value_type> retrieve_sdf(se::Octree<FieldType> *map_index, 
                                                                         Eigen::MatrixX3f voxelPos);
 

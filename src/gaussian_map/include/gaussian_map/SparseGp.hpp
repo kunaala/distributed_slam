@@ -15,7 +15,7 @@ class SparseGp{
         std::vector<Eigen::MatrixXf> gen_data();
         void save_data(Eigen::MatrixXf M, std::string filename );
         void posterior(std::vector<Eigen::MatrixXf> &D);
-        void posterior(std::vector<Eigen::MatrixXf> &D, Eigen::VectorXf m);
+        void posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test);
 
 
         std::string fname_ = "plot.csv";

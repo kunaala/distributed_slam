@@ -48,8 +48,10 @@ std::vector<se::VoxelBlock<FieldType>::value_type> slam::retrieve_sdf(se::Octree
 }
 
 
-void  slam::predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, unsigned int num_elem, float voxel_size_, 
-                        Eigen::VectorXf m){
+void slam::predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, unsigned int num_elem, float voxel_size_){
+    /**
+     * D = {X_train, F_train}
+     **/
     std::vector<se::VoxelBlock<FieldType>*> block_list;
     const unsigned int blockSide = map_index->blockSide;
     block_list.reserve(num_elem);
@@ -66,21 +68,21 @@ void  slam::predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_
      *     creating smooth continuous surfaces
      */
     Eigen::MatrixXf X_test = gen_test_pts(block_centers,blockSide,voxel_size_);
-    D.push_back(X_test(Eigen::placeholders::all,Eigen::seqN(0,2)));
+    Eigen::MatrixXf X_t = X_test(Eigen::placeholders::all,Eigen::seqN(0,2));
     std::cout<<"==========Generated "<<X_test.rows()<<" test points ===========\n";
     /**
-     * D = {X_train, X_m, F_train, F_m, X_test}
+     * D = {X_train, F_train, m}
      **/
      
     std::cout<<"======Prediction starts=======\n";  
     auto tic = std::chrono::high_resolution_clock::now();
     SparseGp sgp; 
-    sgp.posterior(D,m);
+    sgp.posterior(D,X_t);
     auto toc = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(toc-tic);
     std::cout<<"==========completed prediction in "<<duration.count()<<"seconds========\n";
     /**
-     * D = {X_test, mu_t,covar_t}
+     * D = {X_pred, mu_t,covar_t}
      **/
     // std::vector<int8_t> flat_map(6000*6000,-1);
     // int xMin =-300;
@@ -264,8 +266,9 @@ bool slam::mapNext() {
             m(i) = sdf_data.at(i).y;
         }
         D.push_back(F_train);
+        D.push_back(m);
 
-        slam::predict(D, volume_._map_index,num_elem, voxel_size_, m);
+        slam::predict(D, volume_._map_index,num_elem, voxel_size_);
         
         /**
          * @brief Allocate predicted points in Octree

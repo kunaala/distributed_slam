@@ -130,12 +130,12 @@ void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D){
  * @param D 
  * @param m number of sdf value updates of training data 
  */
-void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D, Eigen::VectorXf m){
+void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test){
     
     /**
-     * D = {X_train, F_train, X_test}
+     * D = {X_train, F_train, m}
      **/
-    Eigen::MatrixXf X_test = D.at(2);
+    Eigen::MatrixXf m = D.at(2);
     Eigen::MatrixXf K = kernel(D.at(0),D.at(0));
     Eigen::MatrixXf K_t = kernel(X_test,D.at(0));
     Eigen::MatrixXf K_tt = kernel(X_test,X_test);
@@ -152,7 +152,6 @@ void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D, Eigen::VectorXf m){
 
 
     Eigen::VectorXf covar_t = K_tt.diagonal() - (K_t*L_Z.solve(K_t.transpose())).diagonal();
-    std::cout<<"herhehr\n";
 
     //Flushing training and pseudo datasets
     D.clear();
