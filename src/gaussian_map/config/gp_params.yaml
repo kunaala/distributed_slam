@@ -6,6 +6,7 @@ end_angle : 1.570796
 angular_resolution : 0.017453294
 maximum_range : 81.920000
 laser_frequency : 40
+num_readings : 180
 map_width : 6000
 map_height : 6000
 map_resolution: 0.1

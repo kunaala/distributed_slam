@@ -1,20 +1,18 @@
 #include<gaussian_map/slam.h>
 
 
-slam::slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim,std::string datafile, float ps_grid_res, float mu):
-            agentT_(Eigen::Matrix4f::Identity()), dataseq_(datafile,0){
+slam::slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim,std::string datafile, float ps_grid_res, float mu, ros::NodeHandle &nh):
+            agentT_(Eigen::Matrix4f::Identity()), dataseq_(datafile,0), nh_(nh){
     volume_dimension_ = vol_dim;
     volume_resolution_ = vol_res;
     dataFile_ = datafile;
     ps_grid_res_ = ps_grid_res;
     mu_ = mu;
-    
 
-    discrete_vol_ptr_ = std::make_shared<se::Octree<FieldType> >();
+    discrete_vol_ptr_ = std::make_shared<se::Octree<FieldType>>();
     discrete_vol_ptr_->init(volume_resolution_.x(), volume_dimension_.x());
-    volume_ = Volume<FieldType>(volume_resolution_.x(), volume_dimension_.x(), discrete_vol_ptr_.get());
-
-    
+    volume_ = Volume<FieldType>(volume_resolution_.x(), volume_dimension_.x(), discrete_vol_ptr_.get());  
+ 
 }
 
 /**
@@ -47,11 +45,11 @@ std::vector<se::VoxelBlock<FieldType>::value_type> slam::retrieve_sdf(se::Octree
 
 }
 
-
-void slam::predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, unsigned int num_elem, float voxel_size_){
+Eigen::MatrixXf gen_test_pts(se::Octree<FieldType> *map_index, unsigned int num_elem, float voxel_size_){
     /**
-     * D = {X_train, F_train}
-     **/
+     * @brief Generates test points (including hit and pseudo points from the newly allocated blocks/Octants)
+     * 
+     */
     std::vector<se::VoxelBlock<FieldType>*> block_list;
     const unsigned int blockSide = map_index->blockSide;
     block_list.reserve(num_elem);
@@ -67,13 +65,32 @@ void slam::predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_i
      * 2. The prediction model is expected to predict sdf values of hit and pseudo points based on its neigbouring blocks
      *     creating smooth continuous surfaces
      */
-    Eigen::MatrixXf X_test = gen_test_pts(block_centers,blockSide,voxel_size_);
-    Eigen::MatrixXf X_t = X_test(Eigen::placeholders::all,Eigen::seqN(0,2));
-    std::cout<<"==========Generated "<<X_test.rows()<<" test points ===========\n";
+    Eigen::MatrixXf test_pts(block_centers.rows()*blockSide*blockSide,3);
+    Eigen::VectorXf lin_v(Eigen::VectorXf::LinSpaced(blockSide+1,-(blockSide*voxel_size_/2),blockSide*voxel_size_/2));
+    
+    for(unsigned int c=0;c<block_centers.rows();c++){
+        uint64_t b_x= block_centers(c,0), b_y = block_centers(c,1), b_z = block_centers(c,2);
+        // std::cout<<"\n In block with Block center: "<<block_centers.row(c)<<'\t'<<" and Block Hash: "<<map_index->hash(x, y, z)<<'\n';
+
+        for(unsigned int i=0;i<blockSide;i++){
+            for(unsigned int j=0;j<blockSide;j++)   {
+                Eigen::RowVector3f pt;
+                pt << b_x + lin_v[i], b_y + lin_v[j],b_z + 0.f;
+                test_pts.row(c*blockSide*blockSide + i*blockSide+j) = pt;
+            }
+        }
+    }
+    std::cout<<"==========Generated "<<test_pts.rows()<<" test points ===========\n";
+
+    return test_pts;
+}
+
+void slam::predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, unsigned int num_elem, float voxel_size_){
     /**
-     * D = {X_train, F_train, m}
+     * D = {X_train, F_train,m}
      **/
-     
+    Eigen::MatrixXf X_test = gen_test_pts(map_index, num_elem, voxel_size_);
+    Eigen::MatrixXf X_t = X_test(Eigen::placeholders::all,Eigen::seqN(0,2));     
     std::cout<<"======Prediction starts=======\n";  
     auto tic = std::chrono::high_resolution_clock::now();
     SparseGp sgp; 
@@ -84,29 +101,44 @@ void slam::predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_i
     /**
      * D = {X_pred, mu_t,covar_t}
      **/
-    // std::vector<int8_t> flat_map(6000*6000,-1);
-    // int xMin =-300;
-    // int yMin =-300;
-    // int xMax =300;
-    // int yMax =300;
-    // int numX = xMin/0.1;
-    // int numY = yMin/0.1;
-    // Eigen::MatrixXf X_pred = D.at(0);
-    // for(unsigned int i=0;i<X_pred.rows();i++) {
-    //     flat_map[int(X_pred(i,0) + numX)*6000 + int(X_pred(i,1)+numY)] = int8_t(100*(D.at(1)(i)-yMin)/(yMax-yMin));
-    // }
+    
 
 }
 
+std::vector<int8_t> slam::gen_grid(std::vector<Eigen::MatrixXf> &D){
 
+    /**
+     * D = {X_pred, mu_t,covar_t}
+     **/
+    std::vector<int8_t> flat_map(6000*6000,-1);
+    int xMin =-300;
+    int yMin =-300;
+    int xMax =300;
+    int yMax =300;
+    float map_res = 0.1f;
+    int numX = xMax/map_res;
+    int numY = yMax/map_res;
+    Eigen::MatrixXf X_pred = D.at(0);
+    for(unsigned int i=0;i<X_pred.rows();i++) {
+        flat_map.at(int(X_pred(i,0)/map_res + numX)*6000 + int(X_pred(i,1)/map_res +numY)) = int8_t(100*(D.at(1)(i)));
+    }
+    return flat_map;
+}
 
 
 				
 bool slam::mapNext() {
     std::pair<int,Eigen::VectorXf> dataPoint = dataseq_.getNextPoint();
+    MapPub ros_map(slam::nh_);
+
     if(dataPoint.first==0) { /**<ODOM datapoint*/
         // Updating robot pose
+
         Eigen::VectorXf vals = dataPoint.second;
+        // Updating pose on Ros map
+        ros_map.update_odom(vals);
+
+
         Eigen::Matrix3f Rx,Ry,Rz;
 
         Rx<<1,0,0,
@@ -123,9 +155,11 @@ bool slam::mapNext() {
         newPose.block(0,3,3,1) = tr;
         agentT_.setPose(newPose);
 
+
     }
 
     else if(dataPoint.first==1) { //Lidar scan datapoint
+
         
         std::pair<Eigen::MatrixXf, std::vector<float>> temp = gen_pseudo_pts(dataPoint.second, ps_grid_res_, num_pseudo_pts_);
 
@@ -172,11 +206,12 @@ bool slam::mapNext() {
         prev_alloc_list_.reserve(total);
         prev_unfiltered_alloc_list_.reserve(total);
         prev_keycount_per_block_.reserve(total);
-        predicted_keycount_per_block_.reserve(total);
+        pred_prev_keycount_per_block_.reserve(total);
+        pred_keycount_per_block_.reserve(total);
         
         int prev_alloc_size = -1;
         update_count_++;
-        std::cout<< update_count_ <<"th update"<<'\t'<<"--------------"<<'\n';
+        std::cout<<"@@@@@@@@@@@@@@@@@ update count : "<<update_count_<<'\t'<<"@@@@@@@@@@@@@@"<<'\n';
         unsigned int allocated = buildAllocationList(allocation_list_.data(), allocation_list_.capacity(), prev_alloc_list_.data(),
                                     sdf_vals.data(), X_m, *volume_._map_index, 180*num_pseudo_pts_, prev_alloc_size,
                                     volume_._size, voxel_size_, 2*mu_);
@@ -200,32 +235,35 @@ bool slam::mapNext() {
 
         #endif
         
-        for(unsigned int i=0;i<allocated;i++){
-            unfiltered_alloc_list_[i] = allocation_list_[i];
-        }
         for(unsigned int i=0;i<prev_alloc_size;i++){
             prev_unfiltered_alloc_list_[i] = prev_alloc_list_[i];
         }
+
+        for(unsigned int i=0;i<allocated;i++){
+            unfiltered_alloc_list_[i] = allocation_list_[i];
+        }
+        
         int num_elem = se::algorithms::filter_ancestors(allocation_list_.data(), allocated, log2(volume_._size),
                                                 keycount_per_block_.data());
         int prev_num_elem = se::algorithms::filter_ancestors(prev_alloc_list_.data(), prev_alloc_size, log2(volume_._size),
                                                 prev_keycount_per_block_.data());
-        std::cout<<"Allocation list before prediction--------------\n";
-        for(unsigned int i=0;i<num_elem;i++) {
-            std::cout<<allocation_list_[i].hash<<'\t'<<keycount_per_block_[i]<<"\t";
-        }
-        // for(unsigned int i=0;i<allocated;i++) std::cout<<unfiltered_alloc_list_[i].hash<<"\t";
+        
         std::cout<<"----------Previously allocated list \n";
         for(unsigned int i=0;i<prev_num_elem;i++) {
             std::cout<<prev_alloc_list_[i].hash<<'\t'<<prev_keycount_per_block_[i]<<"\t";
         }
-        for(unsigned int i=0;i<prev_alloc_size;i++) std::cout<<prev_unfiltered_alloc_list_[i].hash<<"\t";
-        std::cout<<"----\n";
-        
-        std::cout<<"total number of new block points"<<allocated<<"\n";
-        std::cout<<"new blocks to be allocated"<<num_elem<<"\n";
-        std::cout<<"Prev_num_blocks"<<prev_alloc_size<<"\n";
-        std::cout<<"prev num blocks to be allocated"<<prev_num_elem<<"\n";
+        std::cout<<'\n';
+        std::cout<<"Allocation list before prediction--------------\n";
+        for(unsigned int i=0;i<num_elem;i++) {
+            std::cout<<allocation_list_[i].hash<<'\t'<<keycount_per_block_[i]<<"\t";
+        }
+        std::cout<<'\n';
+        std::cout<<"==================================================\n";
+        std::cout<<"total number of new block points: "<<allocated<<"\n";
+        std::cout<<"new blocks to be allocated: "<<num_elem<<"\n";
+        std::cout<<"Prev_num_blocks: "<<prev_alloc_size<<"\n";
+        std::cout<<"prev num blocks to be allocated: "<<prev_num_elem<<"\n";
+        std::cout<<"==================================================\n";
         // int prev_num_blocks = 0;
         // for(unsigned int i=0;i<prev_num_elem;i++) {
         //     if(prev_unfiltered_alloc_list_[i].typeAlloc==0) {
@@ -248,7 +286,13 @@ bool slam::mapNext() {
         
         volume_._map_index->allocate(keys.data(), num_elem);
 
-        //Retrieving sdf values
+        //Update sdf vals in octree
+        struct sdf_update funct(mu_, maxWeight_);
+        se::functor::projective_map(*volume_._map_index, funct, unfiltered_alloc_list_.data(), prev_unfiltered_alloc_list_.data(),
+                                    keycount_per_block_.data(), prev_keycount_per_block_.data(),
+                                    num_elem, prev_num_elem, prev_alloc_size -prev_num_elem);
+
+        //PREDICTION SETUP//
         // Add Z dimension
         Eigen::MatrixXf X_train = X_m(Eigen::seq(4,Eigen::placeholders::last,9),Eigen::seqN(0,2));
         D.push_back(X_train);
@@ -257,10 +301,9 @@ bool slam::mapNext() {
         X_trainer.col(1) = X_train.col(1);
         X_trainer.col(2) = Eigen::VectorXf::Zero(X_train.rows());
         std::vector<se::VoxelBlock<FieldType>::value_type> sdf_data;
-        
+        //Retrieving sdf values
         sdf_data = retrieve_sdf(volume_._map_index, X_trainer);
         Eigen::VectorXf F_train(X_train.rows()),m(X_train.rows());
-
         for(unsigned int i=0;i<X_train.rows();i++){
             F_train(i) = sdf_data.at(i).x;
             m(i) = sdf_data.at(i).y;
@@ -271,13 +314,19 @@ bool slam::mapNext() {
         slam::predict(D, volume_._map_index,num_elem, voxel_size_);
         
         /**
-         * @brief Allocate predicted points in Octree
+         * @brief Visualize predicted points and Allocate them in Octree
          *  D = {X_test, mu_t,covar_t}
          */
-        new_allocation_list_.reserve(0);
+        std::vector<int8_t> map_pts = slam::gen_grid(D);
+        ros_map.update_map(map_pts);
+        std::this_thread::sleep_for (std::chrono::seconds(1) * 5);
+
+
         unsigned int num_predicted = D.at(1).size();
         size_t prediction_size = num_vox_per_pt * num_predicted;
         pred_allocation_list_.reserve(prediction_size);
+        new_allocation_list_.reserve(prediction_size);
+
         std::vector<float> new_sdf_vals(num_predicted);
         Eigen::VectorXf::Map(&new_sdf_vals[0], D.at(1).size()) = D.at(1);
         Eigen::MatrixXf X_predicted(num_predicted,3);
@@ -290,22 +339,38 @@ bool slam::mapNext() {
         unsigned int new_allocated = buildAllocationList(new_allocation_list_.data(), new_allocation_list_.capacity(), pred_allocation_list_.data(),
                                     new_sdf_vals.data(),X_predicted, *volume_._map_index, num_predicted, allocated_before,
                                     volume_._size, voxel_size_, 2*mu_);
-        std::cout<<"blocks updated after prediction: \t"<< allocated_before<<'\n';
-        std::cout<<"after prediction, BEFORE filtering: \n";
-        for(unsigned int i=0;i<allocated_before;i++) {
-            std::cout<<pred_allocation_list_[i].hash<<'\t';
-        }
-        std::cout<<'\n';
+        std::cout<<"new blocks updated after prediction: \t"<< new_allocated<<'\n';
+        std::cout<<"preexisiting blocks updated after prediction: \t"<< allocated_before<<'\n';
+
+        
         std::sort(pred_allocation_list_.data(),pred_allocation_list_.data() + allocated_before, 
                                             [](const auto& i, const auto& j) {return i.hash < j.hash;});
-        int predicted_num_elem = se::algorithms::filter_ancestors(pred_allocation_list_.data(), allocated_before, log2(volume_._size),
-                                                predicted_keycount_per_block_.data());
-        // std::cout<<"after prediction, After filtering: \n";
-        // for(unsigned int i=0;i<allocated_before;i++) {
-        //     std::cout<<allocation_list_[i].hash<<'\t'<<predicted_keycount_per_block_[i]<<"\t";
-        // }
-        // std::cout<<'\n';
-        return 0;
+        std::sort(new_allocation_list_.data(),new_allocation_list_.data() + new_allocated, 
+                                            [](const auto& i, const auto& j) {return i.hash < j.hash;});
+        int pred_prev_num_elem = se::algorithms::filter_ancestors(pred_allocation_list_.data(), allocated_before, log2(volume_._size),
+                                                pred_prev_keycount_per_block_.data());
+        int pred_new_num_elem = se::algorithms::filter_ancestors(new_allocation_list_.data(), new_allocated, log2(volume_._size),
+                                                pred_keycount_per_block_.data());
+
+
+        std::cout<<"---------Prediction list - Previously allocated ---- \n";
+        for(unsigned int i=0;i<pred_prev_num_elem;i++) {
+            std::cout<<pred_allocation_list_[i].hash<<'\t'<<pred_prev_keycount_per_block_[i]<<"\t";
+        }
+        std::cout<<'\n';
+        std::cout<<"---------Prediction list - newly allocated ---- \n";
+        for(unsigned int i=0;i<pred_new_num_elem;i++) {
+            std::cout<<new_allocation_list_[i].hash<<'\t'<<pred_keycount_per_block_[i]<<"\t";
+        }
+        std::cout<<'\n';
+
+        std::vector<se::key_t> pred_keys;
+        for(unsigned int i =0; i < pred_new_num_elem;i++){
+            pred_keys.push_back(new_allocation_list_[i].hash);
+        }
+        // for(int i=0;i<allocated;i++)  std::cout<<allocation_list_[i].typeAlloc<<" ";
+        
+        volume_._map_index->allocate(pred_keys.data(), pred_new_num_elem);
         //***********************************************//
         
         // const unsigned block_scale = log2(volume_._size) - se::math::log2_const(se::VoxelBlock<FieldType>::side);
@@ -326,10 +391,10 @@ bool slam::mapNext() {
         // std::sort(unfiltered_alloc_list_.data(),unfiltered_alloc_list_.data() + allocated, less_than_key());
         // std::sort(allocation_list_.data(),allocation_list_.data() + allocated, less_than_key());
 
-        struct sdf_update funct(mu_, maxWeight_);
-        se::functor::projective_map(*volume_._map_index, funct, unfiltered_alloc_list_.data(), prev_unfiltered_alloc_list_.data(),
-                                    keycount_per_block_.data(), prev_keycount_per_block_.data(),
-                                    num_elem, prev_num_elem, prev_alloc_size -prev_num_elem);
+        
+        // se::functor::projective_map(*volume_._map_index, funct, new_allocation_list_.data(), pred_allocation_list_.data(),
+        //                             pred_keycount_per_block_.data(), pred_prev_keycount_per_block_.data(),
+        //                             pred_new_num_elem, pred_prev_num_elem, allocated_before -pred_prev_num_elem);
         
     }
     return true;

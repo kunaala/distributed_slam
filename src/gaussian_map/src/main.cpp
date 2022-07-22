@@ -1,5 +1,3 @@
-#include <iostream>
-#include <Eigen/Core>
 #include "gaussian_map/slam.h"
 
 int main(int argc, char** argv){
@@ -7,8 +5,10 @@ int main(int argc, char** argv){
   Eigen::Vector3i vol_dim{100,100,100};
   std::string datafile = "intel.gfs.log";
   float pseudo_grid_res = 0.2, trunc_band=0.1;
-  slam maslam(vol_res,vol_dim,datafile,pseudo_grid_res,trunc_band);
-  for (unsigned int i=0;i<2000;i++){
+  ros::init(argc, argv, "map_publisher");
+  ros::NodeHandle nh;
+  slam maslam(vol_res,vol_dim,datafile,pseudo_grid_res,trunc_band, nh);
+  for (unsigned int i=0;i<200;i++){
     maslam.mapNext();
   }
 

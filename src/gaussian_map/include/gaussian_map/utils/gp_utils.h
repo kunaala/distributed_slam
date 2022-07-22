@@ -106,23 +106,3 @@ std::pair<Eigen::MatrixXf,std::vector<float>> gen_pseudo_pts(Eigen::VectorXf ran
 
 
 
-Eigen::MatrixXf gen_test_pts(Eigen::MatrixX3i block_centers, const unsigned int blockSide, float voxel_size_){
-    /**
-     * @brief Generates test points (including hit and pseudo points from the newly allocated blocks/Octants)
-     * 
-     */
-    Eigen::MatrixXf test_pts(block_centers.rows()*blockSide*blockSide,3);
-    Eigen::VectorXf lin_v(Eigen::VectorXf::LinSpaced(blockSide+1,-(blockSide*voxel_size_/2),blockSide*voxel_size_/2));
-    
-    for(unsigned int c=0;c<block_centers.rows();c++){
-        for(unsigned int i=0;i<blockSide;i++){
-            for(unsigned int j=0;j<blockSide;j++)   {
-                Eigen::RowVector3f pt;
-                pt << lin_v[i], lin_v[j], block_centers(c,2);
-                test_pts.row(c*blockSide*blockSide + i*blockSide+j) = pt;
-            }
-
-        }
-    }
-    return test_pts;
-}

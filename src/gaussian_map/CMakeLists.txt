@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(gaussian_map)
 
-set(PROJ_DEPS roscpp std_msgs message_generation roslib rosbag sensor_msgs nav_msgs tf)
+set(PROJ_DEPS roscpp std_msgs sensor_msgs nav_msgs tf2 tf2_ros tf2_geometry_msgs)
 set(field_type SE_FIELD_TYPE=SDF)
 
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS ${PROJ_DEPS})
-find_package(Eigen3 REQUIRED)
+# find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
 
 
@@ -31,8 +31,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME}_core
 	lib/SparseGp.cpp
-	# lib/gpModel.cpp
-	# lib/MapPub.cpp
+	lib/MapPub.cpp
 	lib/dataloader.cpp
 	lib/robot.cpp
 	lib/slam.cpp
@@ -40,17 +39,13 @@ add_library(${PROJECT_NAME}_core
 target_compile_definitions(${PROJECT_NAME}_core PUBLIC ${field_type}) 
 
 ## Build executables
-# add_executable(gp_map scripts/ros_gaussian.cpp)
-# target_link_libraries(gp_map ${catkin_LIBRARIES} ${PROJECT_NAME}_core)
-# add_dependencies(gp_map ${PROJ_DEPS})
-
 add_executable(gp_octree src/main.cpp)
-target_link_libraries(gp_octree  ${catkin_LIBRARIES} ${PROJECT_NAME}_core )
+target_link_libraries(gp_octree   ${PROJECT_NAME}_core ${catkin_LIBRARIES})
 add_dependencies(gp_octree ${PROJ_DEPS})
 
 
-install(TARGETS gp_octree
-        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+# install(TARGETS gp_octree
+#         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 
 

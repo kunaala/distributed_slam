@@ -8,7 +8,8 @@
 #include <memory>
 #include <algorithm>
 #include <chrono>
-#include <Eigen/Dense>
+#include <thread>
+#include <Eigen/Core>
 #include "config.h"
 #include <gaussian_map/octree.hpp>
 #include <gaussian_map/robot.h>
@@ -22,6 +23,8 @@
 #include "gaussian_map/functors/projective_functor.hpp"
 #include "gaussian_map/SparseGp.hpp"
 #include "gaussian_map/utils/gp_utils.h"
+#include "gaussian_map/MapPub.hpp"
+#include "ros/ros.h"
 
 
 
@@ -43,7 +46,8 @@ class slam {
         std::vector<struct pointVals<se::key_t>> prev_unfiltered_alloc_list_;
         std::vector<int> keycount_per_block_;
         std::vector<int> prev_keycount_per_block_;
-        std::vector<int> predicted_keycount_per_block_;
+        std::vector<int> pred_prev_keycount_per_block_;
+        std::vector<int> pred_keycount_per_block_;
         std::vector<float> float_depth_;
         std::shared_ptr<se::Octree<FieldType> > discrete_vol_ptr_;
         Volume<FieldType> volume_;
@@ -57,13 +61,17 @@ class slam {
         float maxWeight_ = 100.f;
         const unsigned int num_pseudo_pts_=9;
         float voxel_size_;
+        ros::NodeHandle nh_;
 
         //------------------------//
 
-        void  predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, 
-                                unsigned int num_elem, float voxel_size_);
+        void predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, unsigned int num_elem, float voxel_size_);
+
         std::vector<se::VoxelBlock<FieldType>::value_type> retrieve_sdf(se::Octree<FieldType> *map_index, 
                                                                         Eigen::MatrixX3f voxelPos);
+
+        std::vector<int8_t> gen_grid(std::vector<Eigen::MatrixXf> &D);
+
 
 
 
@@ -78,7 +86,7 @@ class slam {
          * \param[in] ps_grid_res length of the side of the 3x3 pseudo point grid.
          * reconstructed volume in meters.
          */
-        slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim, std::string datafile, float ps_grid_res, float mu);
+        slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim,std::string datafile, float ps_grid_res, float mu, ros::NodeHandle &nh);
 
         /**
          * Maps the next point from the data sequence.

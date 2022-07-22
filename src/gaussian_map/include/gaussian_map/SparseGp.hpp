@@ -14,7 +14,7 @@ class SparseGp{
                      unsigned int test_size, std::pair<int,int> limit, std::string fname);
         std::vector<Eigen::MatrixXf> gen_data();
         void save_data(Eigen::MatrixXf M, std::string filename );
-        void posterior(std::vector<Eigen::MatrixXf> &D);
+        void sparse_posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test);
         void posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test);
 
 

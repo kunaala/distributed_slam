@@ -57,7 +57,7 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, Hash
             if(!n) {
                 // se::key_t k = map_index.hash(voxel.x(), voxel.y(), voxel.z(), block_scale);
                 unsigned int idx = voxelCount++;
-                // if(idx < reserved) {
+                if(idx < reserved) {
                     allocationList[idx].pt = voxel;
                     allocationList[idx].hash = k;
                     allocationList[idx].sdf = sdf_vals[i];
@@ -70,8 +70,8 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, Hash
                     //     std::cout<<"HHahahahahahhahahahahahahahahahahhahaha\n";
                     //     allocationList[idx].typeAlloc = 1;
                     // }
-                // }
-                // else break;
+                }
+                else break;
             }
             else {
                 oldAllocList[oldCount].pt = voxel;

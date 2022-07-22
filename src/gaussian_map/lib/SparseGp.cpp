@@ -79,12 +79,11 @@ Eigen::MatrixXf SparseGp::kernel(Eigen::MatrixXf X1,Eigen::MatrixXf X2 )  {
     return  pow(SparseGp::sigma_f_,2) * ( (M.rowwise()+N - 2 * X1*X2.transpose())  / -2*pow(SparseGp::l_,2) ).array().exp();                                ;
 }
 
-void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D){
-    
+void SparseGp::sparse_posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test){
+
     /**
-     * D = {X_train, X_m, F_train, F_m, X_test}
+     * D = {X_train, X_m, F_train, F_m}
      **/
-    Eigen::MatrixXf X_test = D.at(4);
     Eigen::MatrixXf Knn = SparseGp::kernel(D.at(0),D.at(0));
     Eigen::MatrixXf Kmm = SparseGp::kernel(D.at(1),D.at(1));
     Eigen::MatrixXf Kmn = SparseGp::kernel(D.at(1),D.at(0));

@@ -843,7 +843,6 @@ bool Octree<T>::allocate_level(key_t* keys, int num_tasks, int target_level){
 
   int leaves_level = max_level_ - log2(blockSide);
   nodes_buffer_.reserve(num_tasks);
-  std::cout<<num_tasks<<"--Num tasks\n\n\n\n";
 
 #pragma omp parallel for
   for (int i = 0; i < num_tasks; i++){
