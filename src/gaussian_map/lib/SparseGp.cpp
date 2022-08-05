@@ -140,16 +140,13 @@ void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test
     Eigen::MatrixXf K_tt = kernel(X_test,X_test);
     float noise_var = 0.01;
     Eigen::MatrixXf M = noise_var * m.cwiseInverse().asDiagonal();
-    Eigen::MatrixXf Z = K + M;
+    Eigen::MatrixXf Z_inv = K + M;
+
+    // to compute Z from Z_inv
     Eigen::LLT<Eigen::MatrixXf> L_Z;
-    L_Z.compute(Z);
+    L_Z.compute(Z_inv);
 
-
-    Eigen::MatrixXf mu_t = K_t* L_Z.solve(D.at(1));
-    //IID assumption
-        // std::cout<<"herheoutnmdsnd\t"<<L_Z.solve(K_t.transpose()).rows()<<"x"<<L_Z.solve(K_t.transpose()).cols()<<" \n"; 
-
-
+    Eigen::MatrixXf mu_t = K_t * L_Z.solve(D.at(1));
     Eigen::VectorXf covar_t = K_tt.diagonal() - (K_t*L_Z.solve(K_t.transpose())).diagonal();
 
     //Flushing training and pseudo datasets
@@ -157,7 +154,6 @@ void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test
     // Storing all points with SDF vals X_test, their SDF vals mu_t and covariance 
     D.push_back(X_test);
     D.push_back(mu_t);
-
     D.push_back(covar_t);
 
 
@@ -173,7 +169,7 @@ void SparseGp::save_data(Eigen::MatrixXf M, std::string filename ){
      */
     const static Eigen::IOFormat CSVFormat(Eigen::FullPrecision, Eigen::DontAlignCols, " ");
 
-	std::ofstream fd(filename,std::ios::app);
+	std::ofstream fd(filename,std::ios::out);
 	if (fd.is_open()){
         fd << M.format(CSVFormat);
         fd <<'\n';

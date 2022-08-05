@@ -84,13 +84,13 @@ std::pair<Eigen::MatrixXf,std::vector<float>> gen_pseudo_pts(Eigen::VectorXf ran
 
     Eigen::MatrixXf mapPts_robotFrame(span*num_pseudo_pts,3);
 
-    for(int i=1;i<span;i++) {
+    for(int i=0;i<span;i++) {
         Eigen::Vector3f pt;
         pt<<    cos(angle_vec(i))*vals(i),
                 sin(angle_vec(i))*vals(i),
                 0.0;
         Eigen::MatrixXf  ps_pts = getPseudoPts(curr_pt,ps_grid_side);
-        mapPts_robotFrame.block(i,0,num_pseudo_pts,3) = ps_pts;
+        mapPts_robotFrame.block(num_pseudo_pts*i,0,num_pseudo_pts,3) = ps_pts;
         for(int j=0;j<num_pseudo_pts;j++) {
             float d = getSignedDist(curr_pt, pt, ps_pts.row(j));
             sdf_vals.push_back(d);

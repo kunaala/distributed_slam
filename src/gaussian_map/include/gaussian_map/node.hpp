@@ -144,7 +144,7 @@ template <typename T>
 inline typename VoxelBlock<T>::value_type 
 VoxelBlock<T>::data(const Eigen::Vector3i& pos) const {
   Eigen::Vector3i offset = pos - coordinates_;
-  std::cout<<offset<<"\n";
+  // std::cout<<"pos of voxel: "<<pos<<"block coordinates : "<<coordinates_<<"\n";
   const value_type& data = voxel_block_[offset(0) + offset(1)*side +
                                          offset(2)*sideSq];
   return data;

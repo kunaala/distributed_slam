@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <valarray>
 #include <Eigen/Core>
 #include "config.h"
 #include <gaussian_map/octree.hpp>

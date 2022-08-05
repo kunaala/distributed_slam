@@ -821,6 +821,7 @@ bool Octree<T>::allocate(key_t *keys, int num_elem){
     last_elem = algorithms::unique_multiscale(keys_at_level_, num_elem,SCALE_MASK, level);
     success = allocate_level(keys_at_level_, last_elem, level);
   }
+
   return success;
 }
 

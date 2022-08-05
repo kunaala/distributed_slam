@@ -9,7 +9,9 @@ int main(int argc, char** argv){
   ros::NodeHandle nh;
   slam maslam(vol_res,vol_dim,datafile,pseudo_grid_res,trunc_band, nh);
   for (unsigned int i=0;i<200;i++){
-    maslam.mapNext();
+    // maslam.mapNext();
+    std::cout<<"hainaj\n"<<maslam.mapNext();
+
   }
 
   return 0;
