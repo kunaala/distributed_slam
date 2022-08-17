@@ -1,13 +1,13 @@
 #include "gaussian_map/SparseGp.hpp"
 
 SparseGp::SparseGp(){
-    std::ofstream fd(SparseGp::fname_,std::ios::out);
-    if (fd.is_open()) fd<<SparseGp::dim_<<'\n';
+    fd_.open(fname_,std::ios::out);
+    if (fd_.is_open()) fd_<<SparseGp::dim_<<'\n';
 }
 
 SparseGp::SparseGp(std::string fname) : fname_(fname){
-    std::ofstream fd(SparseGp::fname_,std::ios::out);
-    if (fd.is_open()) fd<<SparseGp::dim_<<'\n';
+    fd_.open(fname_,std::ios::out);
+    if (fd_.is_open()) fd_<<SparseGp::dim_<<'\n';
 }
 
 SparseGp::SparseGp(unsigned int dim, unsigned int train_size, unsigned int pseudo_size, 
@@ -16,8 +16,8 @@ SparseGp::SparseGp(unsigned int dim, unsigned int train_size, unsigned int pseud
                      test_size_(test_size), limit_(limit), fname_(fname){
    
 
-    std::ofstream fd(SparseGp::fname_,std::ios::out);
-    if (fd.is_open()) fd<<SparseGp::dim_<<'\n';
+    fd_.open(fname_,std::ios::out);
+    if (fd_.is_open()) fd_<<SparseGp::dim_<<'\n';
 }
 
 
@@ -89,6 +89,8 @@ void SparseGp::sparse_posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf
     Eigen::MatrixXf Kmn = SparseGp::kernel(D.at(1),D.at(0));
     Eigen::MatrixXf Kmt = SparseGp::kernel(D.at(1),X_test);
     Eigen::MatrixXf Ktt = SparseGp::kernel(X_test,X_test);
+    std::cout<<"Generated kernels; no of test points = "<<X_test.rows()<<'\n';
+
     Eigen::LLT<Eigen::MatrixXf> L_Kmm;
     L_Kmm.compute(Kmm);
 
@@ -134,19 +136,22 @@ void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test
     /**
      * D = {X_train, F_train, m}
      **/
+
     Eigen::MatrixXf m = D.at(2);
     Eigen::MatrixXf K = kernel(D.at(0),D.at(0));
+    std::cout<<"No of test points: "<<X_test.rows()<<'\n';
     Eigen::MatrixXf K_t = kernel(X_test,D.at(0));
     Eigen::MatrixXf K_tt = kernel(X_test,X_test);
+
     float noise_var = 0.01;
     Eigen::MatrixXf M = noise_var * m.cwiseInverse().asDiagonal();
     Eigen::MatrixXf Z_inv = K + M;
-
     // to compute Z from Z_inv
     Eigen::LLT<Eigen::MatrixXf> L_Z;
     L_Z.compute(Z_inv);
 
     Eigen::MatrixXf mu_t = K_t * L_Z.solve(D.at(1));
+    // std::cout<<"M \n"<<M.rows()<<"x"<<M.cols()<<'\n';
     Eigen::VectorXf covar_t = K_tt.diagonal() - (K_t*L_Z.solve(K_t.transpose())).diagonal();
 
     //Flushing training and pseudo datasets
@@ -162,18 +167,17 @@ void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test
 
 
 
-void SparseGp::save_data(Eigen::MatrixXf M, std::string filename ){
+void SparseGp::save_data(Eigen::MatrixXf M){
 
     /*
-     * Saves Eigen Vector "v" in the file specified in "filename" in CSV format.
+     * Saves Eigen Matrix "M" in the file specified in "filename" in CSV format.
      */
     const static Eigen::IOFormat CSVFormat(Eigen::FullPrecision, Eigen::DontAlignCols, " ");
-
-	std::ofstream fd(filename,std::ios::out);
-	if (fd.is_open()){
-        fd << M.format(CSVFormat);
-        fd <<'\n';
-		fd.close();
+    fd_.open(fname_,std::ios::app);
+	if (fd_.is_open()){
+        fd_ << M.format(CSVFormat);
+        fd_ <<'\n';
+		fd_.close();
 	}
 }
 

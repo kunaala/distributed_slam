@@ -46,7 +46,6 @@ MapPub::MapPub(ros::NodeHandle &nh) : nh_(nh){
     MapPub::map.info.origin.position.y = map_cy;
     MapPub::map.info.origin.position.z = map_cz;
     MapPub::map.info.origin.orientation = rpy_to_q(0,0,0);
-    std::cout<<"constructed ros viz object"<<'\n';
 
 
 }

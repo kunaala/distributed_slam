@@ -10,6 +10,7 @@
 #include <chrono>
 #include <thread>
 #include <valarray>
+#include <string>
 #include <Eigen/Core>
 #include "config.h"
 #include <gaussian_map/octree.hpp>
@@ -40,15 +41,11 @@ class slam {
         Eigen::Vector3i volume_dimension_;
         std::vector<struct pointVals<se::key_t>> allocation_list_;
         std::vector<struct pointVals<se::key_t>> prev_alloc_list_;
-        std::vector<struct pointVals<se::key_t>> new_allocation_list_;
-        std::vector<struct pointVals<se::key_t>> pred_allocation_list_;
 
         std::vector<struct pointVals<se::key_t>> unfiltered_alloc_list_;
         std::vector<struct pointVals<se::key_t>> prev_unfiltered_alloc_list_;
         std::vector<int> keycount_per_block_;
         std::vector<int> prev_keycount_per_block_;
-        std::vector<int> pred_prev_keycount_per_block_;
-        std::vector<int> pred_keycount_per_block_;
         std::vector<float> float_depth_;
         std::shared_ptr<se::Octree<FieldType> > discrete_vol_ptr_;
         Volume<FieldType> volume_;
@@ -62,16 +59,20 @@ class slam {
         float maxWeight_ = 100.f;
         const unsigned int num_pseudo_pts_=9;
         float voxel_size_;
+        int prev_alloc_size_;
+        unsigned int allocated_;
         ros::NodeHandle nh_;
 
-        //------------------------//
-
-        void predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index, unsigned int num_elem, float voxel_size_);
-
-        std::vector<se::VoxelBlock<FieldType>::value_type> retrieve_sdf(se::Octree<FieldType> *map_index, 
-                                                                        Eigen::MatrixX3f voxelPos);
-
+        /**<functor to sort blocks in allocation list*/
+         struct less_than_key {
+            inline bool operator() (const pointVals<se::key_t>& struct1, const pointVals<se::key_t>& struct2) {
+                if(struct1.typeAlloc!=struct2.typeAlloc) return struct1.typeAlloc<struct2.typeAlloc;
+                return struct1.hash < struct2.hash;
+            }
+        };
+        Eigen::MatrixXf retrieve_sdf(se::Octree<FieldType> *map_index, Eigen::MatrixX3f voxelPos);
         std::vector<int8_t> gen_grid(std::vector<Eigen::MatrixXf> &D);
+        void predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index);
 
 
 
@@ -88,15 +89,20 @@ class slam {
          * reconstructed volume in meters.
          */
         slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim,std::string datafile, float ps_grid_res, float mu, ros::NodeHandle &nh);
-
         /**
          * Maps the next point from the data sequence.
          *
          * \return Returns true if mapping succesful. False if not or data complete.
          */
         bool mapNext();
+        void visualize(const std::vector<Eigen::MatrixXf> &D);
 
-        unsigned int update_count_ =0;
+        unsigned int update_count_ = 1;
+        float map_res_ = 0.5f;
+        std::pair<unsigned int,unsigned int> map_size_ = std::make_pair(50,50); 
+        unsigned int predict_cycle_ = 5;
+        std::string fname_ = "map_ros.txt";
+
 
 };
 #endif

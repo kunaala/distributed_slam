@@ -104,5 +104,37 @@ std::pair<Eigen::MatrixXf,std::vector<float>> gen_pseudo_pts(Eigen::VectorXf ran
 
 }
 
+Eigen::MatrixXf gen_test_pts(std::pair<unsigned int, unsigned int> map_size, float resolution){
+    /**
+     * @brief generates uniformly distributed test points across the map grid
+     * 
+     */
+    unsigned int size_x = floor(map_size.first/resolution);
+    unsigned int size_y = floor(map_size.second/resolution);
+    Eigen::MatrixXf test_pts(size_x * size_y,3);
+	Eigen::RowVector3f pt;
+	for (unsigned int i = 0; i < size_x; i++)
+	{
+		for (unsigned int j = 0; j < size_y; j++)
+		{
+			pt << i*resolution, j*resolution, 0.f;
+			test_pts.row(i*size_y + j) = pt; 
+		}
+	}
+	return test_pts;
+}
 
 
+void save_data(const Eigen::MatrixXf M,std::string fname){
+
+    /*
+     * Saves Eigen Matrix "M" in the file specified in "filename" in CSV format.
+     */
+    const static Eigen::IOFormat CSVFormat(Eigen::FullPrecision, Eigen::DontAlignCols, " ");
+    std::ofstream fd(fname,std::ios::app);
+	if (fd.is_open()){
+        fd << M.format(CSVFormat);
+        fd <<'\n';
+		fd.close();
+	}
+}

@@ -13,12 +13,14 @@ class SparseGp{
         SparseGp(unsigned int dim, unsigned int train_size, unsigned int pseudo_size, 
                      unsigned int test_size, std::pair<int,int> limit, std::string fname);
         std::vector<Eigen::MatrixXf> gen_data();
-        void save_data(Eigen::MatrixXf M, std::string filename );
+        void save_data(Eigen::MatrixXf M);
         void sparse_posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test);
         void posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test);
 
 
-        std::string fname_ = "plot.csv";
+        std::string fname_ = "map_ros.txt";
+        std::ofstream fd_;
+
         unsigned int dim_=2, train_size_, pseudo_size_, test_size_;
         std::pair<int,int> limit_;
 
