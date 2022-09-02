@@ -136,30 +136,26 @@ void SparseGp::posterior(std::vector<Eigen::MatrixXf> &D, Eigen::MatrixXf X_test
     /**
      * D = {X_train, F_train, m}
      **/
-
+    Eigen::VectorXf mu_0 = Eigen::VectorXf::Constant(X_test.rows(),2.5);
     Eigen::MatrixXf m = D.at(2);
     Eigen::MatrixXf K = kernel(D.at(0),D.at(0));
-    std::cout<<"No of test points: "<<X_test.rows()<<'\n';
     Eigen::MatrixXf K_t = kernel(X_test,D.at(0));
-    Eigen::MatrixXf K_tt = kernel(X_test,X_test);
-
+    // Eigen::MatrixXf K_tt = kernel(X_test,X_test);
     float noise_var = 0.01;
     Eigen::MatrixXf M = noise_var * m.cwiseInverse().asDiagonal();
     Eigen::MatrixXf Z_inv = K + M;
     // to compute Z from Z_inv
     Eigen::LLT<Eigen::MatrixXf> L_Z;
     L_Z.compute(Z_inv);
+    Eigen::VectorXf mu_t = mu_0 + (K_t * L_Z.solve(D.at(1)));
+    // Eigen::VectorXf covar_t = K_tt.diagonal() - (K_t*L_Z.solve(K_t.transpose())).diagonal();
 
-    Eigen::MatrixXf mu_t = K_t * L_Z.solve(D.at(1));
-    // std::cout<<"M \n"<<M.rows()<<"x"<<M.cols()<<'\n';
-    Eigen::VectorXf covar_t = K_tt.diagonal() - (K_t*L_Z.solve(K_t.transpose())).diagonal();
-
-    //Flushing training and pseudo datasets
+    //Flushing training points and their occurences
     D.clear();
     // Storing all points with SDF vals X_test, their SDF vals mu_t and covariance 
     D.push_back(X_test);
     D.push_back(mu_t);
-    D.push_back(covar_t);
+    // D.push_back(covar_t);
 
 
 }

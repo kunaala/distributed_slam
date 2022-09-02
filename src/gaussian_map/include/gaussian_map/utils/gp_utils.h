@@ -37,6 +37,24 @@ double euclidDist(const Eigen::Vector3f p1, const Eigen::Vector3f p2) {
 }
 
 /**
+ * @brief Sort list of Eigen::Vector3 
+ * \param vector_list list of Eigen::Vector3s
+ * \return returns sorted list of Eigen::Vector3s
+ */
+void sort_vectors(std::vector<Eigen::Vector3i> &vector_v){
+    std::sort(vector_v.begin(),vector_v.end(),[](const Eigen::Vector3i &coords1, const Eigen::Vector3i &coords2){
+        //sorting based on just the first coordinate
+        if (coords1(0) == coords2(0)){
+			if (coords1(1) == coords2(1)){
+				return coords1(2) < coords2(2);
+			}
+			return coords1(1) < coords2(1);
+		}
+		return coords1(0) < coords2(0);
+    });
+}
+
+/**
  * Computes the location the pseudo points by placing a 3x3 grid on the laser hitpoint.
  *
  * \param[in] p 3x1 vector denoting the laser hitpoint.
@@ -70,7 +88,6 @@ std::pair<Eigen::MatrixXf,std::vector<float>> gen_pseudo_pts(Eigen::VectorXf ran
      * @brief 3. Converts all pseudo points(includes hit points) into World Frame
      */
     std::vector<float> sdf_vals;
-    Eigen::VectorXf vals = range_vals;
     // Eigen::Matrix<float,3,Eigen::Dynamic> pts_body; /**<3D vector*/
     Eigen::Vector3f curr_pt;
     unsigned int span = 180;
@@ -78,16 +95,21 @@ std::pair<Eigen::MatrixXf,std::vector<float>> gen_pseudo_pts(Eigen::VectorXf ran
     float ang_res = 2*0.008727;
     Eigen::VectorXf angle_vec = angle_increments(span, start_angle , ang_res);
 
-    curr_pt<<   cos(angle_vec(0))*vals(0), 
-                sin(angle_vec(0))*vals(0), 
+    curr_pt<<   cos(angle_vec(0))*range_vals(0), 
+                sin(angle_vec(0))*range_vals(0), 
                 0.0;
+    std::vector<float> valid_ranges;
+    for(unsigned int i=0;i<span;i++) {
+        if (range_vals[i] > 0 && range_vals[i] < 80) valid_ranges.push_back(range_vals[i]);
+    }
 
-    Eigen::MatrixXf mapPts_robotFrame(span*num_pseudo_pts,3);
 
-    for(int i=0;i<span;i++) {
+    Eigen::MatrixXf mapPts_robotFrame(valid_ranges.size()*num_pseudo_pts,3);
+
+    for(unsigned int i=0;i<valid_ranges.size();i++) {
         Eigen::Vector3f pt;
-        pt<<    cos(angle_vec(i))*vals(i),
-                sin(angle_vec(i))*vals(i),
+        pt<<    cos(angle_vec(i))*valid_ranges.at(i),
+                sin(angle_vec(i))*valid_ranges.at(i),
                 0.0;
         Eigen::MatrixXf  ps_pts = getPseudoPts(curr_pt,ps_grid_side);
         mapPts_robotFrame.block(num_pseudo_pts*i,0,num_pseudo_pts,3) = ps_pts;
@@ -104,25 +126,25 @@ std::pair<Eigen::MatrixXf,std::vector<float>> gen_pseudo_pts(Eigen::VectorXf ran
 
 }
 
-Eigen::MatrixXf gen_test_pts(std::pair<unsigned int, unsigned int> map_size, float resolution){
-    /**
-     * @brief generates uniformly distributed test points across the map grid
-     * 
-     */
-    unsigned int size_x = floor(map_size.first/resolution);
-    unsigned int size_y = floor(map_size.second/resolution);
-    Eigen::MatrixXf test_pts(size_x * size_y,3);
-	Eigen::RowVector3f pt;
-	for (unsigned int i = 0; i < size_x; i++)
-	{
-		for (unsigned int j = 0; j < size_y; j++)
-		{
-			pt << i*resolution, j*resolution, 0.f;
-			test_pts.row(i*size_y + j) = pt; 
-		}
-	}
-	return test_pts;
-}
+// Eigen::MatrixXf gen_test_pts(std::pair<unsigned int, unsigned int> map_size, float resolution){
+//     /**
+//      * @brief generates uniformly distributed test points across the map grid
+//      * 
+//      */
+//     unsigned int size_x = floor(map_size.first/resolution);
+//     unsigned int size_y = floor(map_size.second/resolution);
+//     Eigen::MatrixXf test_pts(size_x * size_y,3);
+// 	Eigen::RowVector3f pt;
+// 	for (unsigned int i = 0; i < size_x; i++)
+// 	{
+// 		for (unsigned int j = 0; j < size_y; j++)
+// 		{
+// 			pt << i*resolution, j*resolution, 0.f;
+// 			test_pts.row(i*size_y + j) = pt; 
+// 		}
+// 	}
+// 	return test_pts;
+// }
 
 
 void save_data(const Eigen::MatrixXf M,std::string fname){

@@ -7,9 +7,9 @@ angular_resolution : 0.017453294
 maximum_range : 81.920000
 laser_frequency : 40
 num_readings : 180
-map_width : 6000
-map_height : 6000
+map_width : 300
+map_height : 300
 map_resolution: 0.1
-map_cx : -300
-map_cy : -300
+map_cx : 150
+map_cy : 150
 map_cz : 0.0

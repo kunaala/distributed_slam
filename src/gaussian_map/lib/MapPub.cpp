@@ -14,7 +14,7 @@ MapPub::MapPub(ros::NodeHandle &nh) : nh_(nh){
     MapPub::nh_.getParam("laser_frequency", laser_frequency);
     
 
-    MapPub::scan.header.frame_id = "lidar";
+    MapPub::scan.header.frame_id = "robot";
     MapPub::scan.angle_min = start_angle;
     MapPub::scan.angle_max = (MapPub::scan.angle_min + field_of_view); 
     MapPub::scan.angle_increment = angular_resolution; 
@@ -39,9 +39,9 @@ MapPub::MapPub(ros::NodeHandle &nh) : nh_(nh){
     MapPub::nh_.getParam("map_cx", map_cx);
     MapPub::nh_.getParam("map_cy", map_cy);
     MapPub::nh_.getParam("map_cz", map_cz);
-    MapPub::map.info.width =  map_width;
-    MapPub::map.info.height = map_height;
-    MapPub::map.info.resolution = map_resolution;
+    MapPub::map.info.width =  map_width/map_resolution;
+    MapPub::map.info.height = map_height/map_resolution;
+    MapPub::map.info.resolution = 1;
     MapPub::map.info.origin.position.x = map_cx;
     MapPub::map.info.origin.position.y = map_cy;
     MapPub::map.info.origin.position.z = map_cz;
@@ -89,7 +89,7 @@ void MapPub::update_odom(Eigen::VectorXf pose){
 
 void MapPub::update_map(std::vector<int8_t> rer){
     MapPub::map.data = rer;
-    ros::Rate r(50.0);
+    ros::Rate r(5.0);
 
     MapPub::map_pub.publish(MapPub::map);
     MapPub::world_T_map.header.stamp = ros::Time::now();
@@ -106,7 +106,7 @@ void MapPub::update_map(std::vector<int8_t> rer){
 	
     MapPub::br_.sendTransform(MapPub::world_T_map);
     
-    std::cout<<"Updated map"<<'\n';
+    std::cout<<"Published map"<<'\n';
 
     r.sleep();
 

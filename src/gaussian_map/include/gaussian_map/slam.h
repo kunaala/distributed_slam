@@ -41,7 +41,7 @@ class slam {
         Eigen::Vector3i volume_dimension_;
         std::vector<struct pointVals<se::key_t>> allocation_list_;
         std::vector<struct pointVals<se::key_t>> prev_alloc_list_;
-
+        unsigned int total_alloc_size_ = 0; 
         std::vector<struct pointVals<se::key_t>> unfiltered_alloc_list_;
         std::vector<struct pointVals<se::key_t>> prev_unfiltered_alloc_list_;
         std::vector<int> keycount_per_block_;
@@ -61,6 +61,9 @@ class slam {
         float voxel_size_;
         int prev_alloc_size_;
         unsigned int allocated_;
+        Eigen::MatrixX3f X_train_;
+        std::vector<Eigen::Vector3i> block_coords_;
+
         ros::NodeHandle nh_;
 
         /**<functor to sort blocks in allocation list*/
@@ -72,6 +75,8 @@ class slam {
         };
         Eigen::MatrixXf retrieve_sdf(se::Octree<FieldType> *map_index, Eigen::MatrixX3f voxelPos);
         std::vector<int8_t> gen_grid(std::vector<Eigen::MatrixXf> &D);
+        Eigen::MatrixXf gen_test_pts(se::Octree<FieldType> *map_index, Eigen::MatrixX3f X_train);
+
         void predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index);
 
 
@@ -98,10 +103,14 @@ class slam {
         void visualize(const std::vector<Eigen::MatrixXf> &D);
 
         unsigned int update_count_ = 1;
-        float map_res_ = 0.5f;
-        std::pair<unsigned int,unsigned int> map_size_ = std::make_pair(50,50); 
-        unsigned int predict_cycle_ = 5;
+        float map_res_ = 0.1f;
+        unsigned int blockSide_;
+        std::pair<unsigned int,unsigned int> map_size_ = std::make_pair(300,300); 
+        unsigned int predict_cycle_ = 3;
+        unsigned int filter_training_ = 2;
         std::string fname_ = "map_ros.txt";
+        std::vector<int8_t> ros_map_;
+
 
 
 };

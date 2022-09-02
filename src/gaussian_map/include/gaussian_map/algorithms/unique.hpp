@@ -57,7 +57,8 @@ namespace algorithms {
         if(descendant(keys[i].hash, keys[e].hash, max_depth)){
           count++;
           keys[e] = keys[i];
-        } else {
+        } 
+        else {
           /* end does not advance but previous entry is overwritten */
           num_keys_per_block[e] = count;
           count = 1;
