@@ -1,47 +1,51 @@
 #include<Eigen/Dense>
 #include<vector>
-/**
- * @brief Compute angle increments for Lidar scan
- * @param scan_angle maximum scan angle of the Lidar
- */
+
 Eigen::VectorXf angle_increments(unsigned int span, float start_angle, float angle_res){
+    /**
+    * @brief Compute angle increments for Lidar scan
+    * @param scan_angle maximum scan angle of the Lidar
+    */
     Eigen::VectorXf angle_vec(span);
     for(int i=0;i<180;i++) {
         angle_vec(i)= start_angle + i*angle_res;
     }
     return angle_vec;
 }
-/**
- * Get the TSDF value of the target point using two consequtive laser hitpoints.
- *
- * \param[in] p1 3x1 vector denoting point one.
- * \param[in] p2 3x1 vector denoting point two.
- * \param[in] q 3x1 vector denoting the target point.
- * \return Returns the TSDF value at target point.
- */
+
 float getSignedDist(const Eigen::Vector3f p1, const Eigen::Vector3f p2, const Eigen::Vector3f q) {
+    /**
+     * Get the TSDF value of the target point using two consequtive laser hitpoints.
+     *
+     * \param[in] p1 3x1 vector denoting point one.
+     * \param[in] p2 3x1 vector denoting point two.
+     * \param[in] q 3x1 vector denoting the target point.
+     * \return Returns the TSDF value at target point.
+     */
     double dist = sqrt((p2(0)-p1(0))*(p2(0)-p1(0)) + (p1(1)-p2(1))*(p1(1)-p2(1)));
     double val = abs((p2(0)-p1(0))*(p1(1)-q(1)) - (p1(0)-q(0))*(p2(1)-p1(1)));
     return val/dist;
 }
 
-/**
+
+double euclidDist(const Eigen::Vector3f p1, const Eigen::Vector3f p2) {
+    /**
  * Computes the euclidean distance between two points.
  *
  * \param[in] p1 3x1 vector point 1
  * \param[in] p2 3x1 vector point 2.
  * \return Returns the euclidean distance between two points.
  */
-double euclidDist(const Eigen::Vector3f p1, const Eigen::Vector3f p2) {
     return (p1-p2).squaredNorm();
 }
 
-/**
- * @brief Sort list of Eigen::Vector3 
- * \param vector_list list of Eigen::Vector3s
- * \return returns sorted list of Eigen::Vector3s
- */
+
 void sort_vectors(std::vector<Eigen::Vector3i> &vector_v){
+    /**
+     * @brief Sort list of Eigen::Vector3 
+     * \param vector_list list of Eigen::Vector3s
+     * \return returns sorted list of Eigen::Vector3s
+     */
     std::sort(vector_v.begin(),vector_v.end(),[](const Eigen::Vector3i &coords1, const Eigen::Vector3i &coords2){
         //sorting based on just the first coordinate
         if (coords1(0) == coords2(0)){
@@ -54,18 +58,27 @@ void sort_vectors(std::vector<Eigen::Vector3i> &vector_v){
     });
 }
 
-/**
- * Computes the location the pseudo points by placing a 3x3 grid on the laser hitpoint.
- *
- * \param[in] p 3x1 vector denoting the laser hitpoint.
- * \param[in] grid_side length of the side of the pseudo point grid.
- * \param[in] datafile string denoting the file location of the dataset.
- * \param[in] mu the band width for the TSDF.
- * \return Returns 9x3 matrix where each row is a pseudo point At
- * the center of the 3x3 pseudo point grid.
- */
+int hashed_val(Eigen::Vector3i vec){
+    /**
+     * @brief compute hashed value of Eigen::Vector3i
+     * 
+     */
+	return vec(0)*3 + vec(1)*2 + vec(2);
+}
+
+
 
 Eigen::Matrix<float, 9, 3> getPseudoPts(const Eigen::Vector3f p, float grid_side) {
+    /**
+     * Computes the location the pseudo points by placing a 3x3 grid on the laser hitpoint.
+     *
+     * \param[in] p 3x1 vector denoting the laser hitpoint.
+     * \param[in] grid_side length of the side of the pseudo point grid.
+     * \param[in] datafile string denoting the file location of the dataset.
+     * \param[in] mu the band width for the TSDF.
+     * \return Returns 9x3 matrix where each row is a pseudo point At
+     * the center of the 3x3 pseudo point grid.
+     */
     Eigen::Matrix<float, 9, 3> pts;
     pts<<p(0)-grid_side, p(1)-grid_side, p(2),
         p(0), p(1)-grid_side, p(2),

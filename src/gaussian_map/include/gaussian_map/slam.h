@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <algorithm>
 #include <chrono>
@@ -41,7 +41,6 @@ class slam {
         Eigen::Vector3i volume_dimension_;
         std::vector<struct pointVals<se::key_t>> allocation_list_;
         std::vector<struct pointVals<se::key_t>> prev_alloc_list_;
-        unsigned int total_alloc_size_ = 0; 
         std::vector<struct pointVals<se::key_t>> unfiltered_alloc_list_;
         std::vector<struct pointVals<se::key_t>> prev_unfiltered_alloc_list_;
         std::vector<int> keycount_per_block_;
@@ -63,7 +62,8 @@ class slam {
         unsigned int allocated_;
         Eigen::MatrixX3f X_train_;
         std::vector<Eigen::Vector3i> block_coords_;
-
+        std::unordered_map<int,std::vector<Eigen::Vector3i>> block_hash_mapped_pseudo_pts;
+        std::unordered_map<int,Eigen::Vector3i> block_hash_mapped_block_coords;
         ros::NodeHandle nh_;
 
         /**<functor to sort blocks in allocation list*/
@@ -75,9 +75,10 @@ class slam {
         };
         Eigen::MatrixXf retrieve_sdf(se::Octree<FieldType> *map_index, Eigen::MatrixX3f voxelPos);
         std::vector<int8_t> gen_grid(std::vector<Eigen::MatrixXf> &D);
-        Eigen::MatrixXf gen_test_pts(se::Octree<FieldType> *map_index, Eigen::MatrixX3f X_train);
-
-        void predict(std::vector<Eigen::MatrixXf> &D, se::Octree<FieldType> *map_index);
+        
+        void group_training_pts(se::Octree<FieldType> *map_index);
+        Eigen::MatrixXf gen_test_pts(Eigen::Vector3i block_coord);
+        void predict(se::Octree<FieldType> *map_index);
 
 
 
@@ -110,6 +111,8 @@ class slam {
         unsigned int filter_training_ = 2;
         std::string fname_ = "map_ros.txt";
         std::vector<int8_t> ros_map_;
+        Eigen::VectorXf curr_odom_;
+        Eigen::MatrixX2f odom_vals;
 
 
 

@@ -92,25 +92,44 @@ Eigen::MatrixXf slam::retrieve_sdf(se::Octree<FieldType> *map_index, Eigen::Matr
     return sdf_data;
 }
 
-Eigen::MatrixXf slam::gen_test_pts(se::Octree<FieldType> *map_index,Eigen::MatrixX3f X_train){
+void slam::group_training_pts(se::Octree<FieldType> *map_index){
     /**
-     * @brief Generates test points (including hit and pseudo points from the newly allocated blocks/Octants)
+     * @brief groups training points into their respective blocks
      *
      */
 
     Eigen::Vector3f voxelScaled;
     Eigen::Vector3i voxel;
     float inverse_voxel_size = 1.f/voxel_size_;
+    Eigen::Vector3i block_coord;
+    std::vector<Eigen::Vector3i> pts_in_blk;
+    int block_hash;
     unsigned int negative_voxel_scaled =0,valid_voxel_scaled =0, error_count =0;
-    for(unsigned int i=0;i<X_train.rows();i++){
-        voxelScaled = (X_train.row(i) * inverse_voxel_size).array().floor();
+    for(unsigned int i=0;i<X_train_.rows();i++){
+        voxelScaled = (X_train_.row(i) * inverse_voxel_size).array().floor();
         if ((voxelScaled.x() >= 0) && (voxelScaled.y() >= 0) && (voxelScaled.z() >= 0)             
             && (voxelScaled.x() < volume_._size) && (voxelScaled.y() < volume_._size) && (voxelScaled.z() < volume_._size)){
 
             valid_voxel_scaled++;
             voxel = voxelScaled.cast<int>();
             se::VoxelBlock<FieldType> *block = map_index->fetch(voxel.x(), voxel.y(), voxel.z());
-            if (block) block_coords_.push_back(block->coordinates());
+            if (block) {
+                //insert block into collection of all blocks block_coords if it is not already present
+                block_coord = block->coordinates();
+                block_hash = hashed_val(block_coord);
+                if (std::find(block_coords_.begin(), block_coords_.end(),block_coord) == block_coords_.end())  {
+                    block_coords_.push_back(block_coord);
+                    block_hash_mapped_pseudo_pts[block_hash].push_back(voxel);
+                    block_hash_mapped_block_coords[block_hash] = block_coord;
+                }
+                else{
+                    pts_in_blk = block_hash_mapped_pseudo_pts[block_hash];
+                    //insert voxel into map only if it is not already present
+                    if (std::find(pts_in_blk.begin(), pts_in_blk.end(),voxel) == pts_in_blk.end())  {
+                        block_hash_mapped_pseudo_pts[block_hash].push_back(voxel);
+                    }
+                }
+            }
             else error_count++;
             
         }
@@ -119,13 +138,30 @@ Eigen::MatrixXf slam::gen_test_pts(se::Octree<FieldType> *map_index,Eigen::Matri
     std::cout<<"negative voxel scaled count "<<negative_voxel_scaled<<'\t'
             <<"valid voxel scaled count "<<valid_voxel_scaled<<'\t'
             <<"error count "<<error_count<<'\n';
-    sort_vectors(block_coords_);
-    //filter unique blocks
-    auto last_itr = std::unique(block_coords_.begin(),block_coords_.end());
-    unsigned int num_blocks = std::distance(block_coords_.begin(),last_itr);
-    std::cout<<"number of test blocks: "<<num_blocks<<'\n';
-    block_coords_.resize(num_blocks);
-    /**
+    // sort_vectors(block_coords_);
+    // //filter unique blocks
+    // auto last_itr = std::unique(block_coords_.begin(),block_coords_.end());
+    // unsigned int num_blocks = std::distance(block_coords_.begin(),last_itr);
+    // std::cout<<"number of test blocks: "<<num_blocks<<'\n';
+    // block_coords_.resize(num_blocks);
+   
+    
+    
+    std::cout<<"test blocks considered:: "<< block_coords_.size()<<'\n';
+    for(auto i:block_coords_)    std::cout<<i.transpose()<<'\n';
+    std::cout<<"++++++++++++++++grouping+++++++++++++++\n";
+    for (auto itr:block_hash_mapped_pseudo_pts) {
+		std::cout<<"\nblock_hash : "<<itr.first<<"\tblock coordinate : "<<block_hash_mapped_block_coords[itr.first].transpose()<<'\n';
+		std::cout<<'[';
+		for(auto i:block_hash_mapped_pseudo_pts[itr.first]) std::cout<<i.transpose()<<'\t';
+		std::cout<<']'<<'\n';
+	}
+
+    
+}
+
+Eigen::MatrixXf slam::gen_test_pts(Eigen::Vector3i block_coord){
+     /**
      * @brief Test point set includes hit points and pseudo points as
      * 1. To avoid discontinuities  due to  local kriging , the newly allocated blocks are pooled together
      *  as training and pseudo datasets
@@ -134,63 +170,51 @@ Eigen::MatrixXf slam::gen_test_pts(se::Octree<FieldType> *map_index,Eigen::Matri
      */
     int numBlockVoxels = int(blockSide_/map_res_);
     Eigen::VectorXf lin_v(Eigen::VectorXf::LinSpaced(numBlockVoxels + 1, 0, int(blockSide_)));
-    Eigen::MatrixXf test_pts(num_blocks * numBlockVoxels * numBlockVoxels, 3);
-    for (unsigned int b = 0; b < num_blocks; b++)
-    {
-        uint64_t b_x = (block_coords_.at(b))(0), b_y = (block_coords_.at(b))(1), b_z =(block_coords_.at(b))(2);
-        // std::cout<<"\n In block with Block center: "<<block_centers.row(c)<<'\t'<<" and Block Hash: "<<map_index->hash(x, y, z)<<'\n';
-
-        for (unsigned int i = 0; i < numBlockVoxels; i++)
+    Eigen::MatrixXf test_pts(numBlockVoxels * numBlockVoxels, 3);
+    for (unsigned int i = 0; i < numBlockVoxels; i++)
         {
             for (unsigned int j = 0; j < numBlockVoxels; j++)
             {
                 Eigen::RowVector3f pt;
                 // pt << b_x + (lin_v[i] - std::fmod(lin_v[i],map_res_)), b_y + (lin_v[j] - std::fmod(lin_v[j],map_res_)), 0.f;
-                pt << b_x + lin_v[i], b_y + lin_v[j], 0.f;
-                // std::cout<<pt<<'\n';
-                test_pts.row(b * numBlockVoxels * numBlockVoxels + i * numBlockVoxels + j) = pt;
+                pt << block_coord(0) + lin_v[i], block_coord(1) + lin_v[j], 0.f;
+                test_pts.row((i * numBlockVoxels) + j) = pt;
             }
         }
-    }
-    std::cout<<"test blocks considered: \n";
-    for(auto i:block_coords_)    std::cout<<i.transpose()<<'\n';
-    std::cout << "==========Generated " << test_pts.rows() << " test points ===========\n";
-
+    
     return test_pts;
 }
-
-
-    
-
+   
 void slam::visualize(const std::vector<Eigen::MatrixXf> &D){
    /**
     * @brief To visualize the predicted sdf values
     * 
     */
     /**
-     * D = {X_pred, mu_pred,covar_pred}
+     * D = {X_pred, mu_pred}
      **/
-    //visualize through Rviz
-    int xMin = -map_size_.first/2;
-    int yMin = -map_size_.second/2;
-    int xMax = map_size_.first/2;
-    int yMax = map_size_.first/2;
-    int offX = xMax / map_res_;
-    int offY = yMax / map_res_;
-    int scale_factor = 1/map_res_;
-    Eigen::MatrixXf X_pred = D.at(0);
-    for (unsigned int i = 0; i < X_pred.rows(); i++)
-    {
-        ros_map_.at(int(X_pred(i, 0) *scale_factor + offX) *(map_size_.first *scale_factor) + int(X_pred(i, 1) *scale_factor + offY)) = int8_t(100 * (D.at(1)(i)));
-    }
-    std::string rviz_file = "";
     std::string count_str = std::to_string(update_count_);
-    rviz_file += count_str + "_rviz_" + slam::fname_;
-    std::ofstream f(rviz_file);
-    for(std::vector<int8_t>::const_iterator i = ros_map_.begin(); i != ros_map_.end(); ++i) {
-        f << *i << '\n';
-    }
-    std::cout<<"updated values in rosmap\n";
+
+    //visualize through Rviz
+    // int xMin = -map_size_.first/2;
+    // int yMin = -map_size_.second/2;
+    // int xMax = map_size_.first/2;
+    // int yMax = map_size_.first/2;
+    // int offX = xMax / map_res_;
+    // int offY = yMax / map_res_;
+    // int scale_factor = 1/map_res_;
+    // Eigen::MatrixXf X_pred = D.at(0);
+    // for (unsigned int i = 0; i < X_pred.rows(); i++)
+    // {
+    //     ros_map_.at(int(X_pred(i, 0) *scale_factor + offX) *(map_size_.second *scale_factor) + int(X_pred(i, 1) *scale_factor + offY)) = int8_t(100 * (D.at(1)(i)));
+    // }
+    // std::string rviz_file = "";
+    // rviz_file += count_str + "_rviz_" + slam::fname_;
+    // std::ofstream f(rviz_file);
+    // for(std::vector<int8_t>::const_iterator i = ros_map_.begin(); i != ros_map_.end(); ++i) {
+    //     f << int(*i) << '\t';
+    // }
+    // std::cout<<"updated values in rosmap\n";
 
     //Visualize using Python by writing into a file
     std::string viz_file = "";
@@ -200,10 +224,114 @@ void slam::visualize(const std::vector<Eigen::MatrixXf> &D){
     save_data(D.at(0).transpose(), viz_file);
     // predicted points sdf values
     save_data(D.at(1).transpose(), viz_file);
+    //accumulated odom values
+    save_data(D.at(2).transpose(), viz_file);
+
 
 }
 
+void slam::predict(se::Octree<FieldType> *map_index){
+    /**
+     * @brief   1. Groups training points in their respective blocks in Octree
+     *          2. Generates test points to extensively cover each block
+     *          3. Predict sdf values of test points in each block using training points 
+     *          present in the same block
+     * 
+     */
+    //group training points into their respective blocks
+    slam::group_training_pts(map_index);
+    // block_hash_mapped_pseudo_pts : maps block hashes with vector of pseudo points collected so far
+    // block_hash_mapped_block_coords : maps block hashes with their respective block coordinates
+    int block_hash;
+    Eigen::Vector3i block_coord;
+    std::vector<Eigen::Vector3i> pts_in_blk;
+    unsigned int prev_size;
+    Eigen::MatrixXf X_pred(0,2);
+    Eigen::VectorXf sdf_pred;
+    std::vector<Eigen::MatrixXf> E;
 
+    auto tic = std::chrono::high_resolution_clock::now();
+    // Iterate over all the blocks allocated so far
+    for (auto itr:block_hash_mapped_pseudo_pts) {
+        block_hash = itr.first;
+        block_coord = block_hash_mapped_block_coords[block_hash];
+        pts_in_blk = itr.second;
+        
+        Eigen::MatrixXf x_train(pts_in_blk.size(),3);
+        for(unsigned int i=0;i<pts_in_blk.size();i++)   x_train.row(i) = pts_in_blk.at(i).cast<float>();
+        std::vector<Eigen::MatrixXf> D;
+        D.push_back(x_train(Eigen::placeholders::all, Eigen::seq(0,1)));
+        // TODO : Data centering/Averaging - does not affect TSDF posterior\\
+        //@@@@@@@@@@@@@@@@@ USING Precision Matrix Z in GAUSSIAN PROCESS @@@@@@@@@@@@@
+        /**<Retrieving sdf values of training points from Octree*/
+        
+        Eigen::MatrixXf sdf_data = retrieve_sdf(volume_._map_index, x_train);
+        std::cout << "\n+++++++++++++++ retrieved sdf of "<<x_train.rows()<<" training points +++++++++++++ in block "
+                    << block_coord.transpose()<<'\n';
+        // 
+        // sdf_data =[ sdf_values for accumulated training points,  their corresponding occurences 'm' ]
+        // for(unsigned int i=0;i<X_train_.rows();i++){
+        //     std::cout<<"pt: "<<X_train_.row(i).transpose()<<'\t'<<"sdf:"<<sdf_data(i,0)<<'\n';
+        // }
+        D.push_back(sdf_data.col(0));
+        D.push_back(sdf_data.col(1));
+        //D = {X_train_, F_train, m_train} 
+        Eigen::MatrixXf X_test = slam::gen_test_pts(block_coord);
+        Eigen::MatrixXf X_t = X_test(Eigen::placeholders::all, Eigen::seq(0, 1));
+        SparseGp sgp;
+
+        //D = {X_train_, F_train, m_train}
+        sgp.posterior(D, X_t);
+        //D = {X_test, mu_test}
+       
+        //@@@@@@@@@@@@@@@@@ USING SPARSE PSEUDO POINT GAUSSIAN PROCESS @@@@@@@@@@@@@
+        // Storing pseudo points
+        /*
+        D.push_back(X_m(Eigen::placeholders::all,Eigen::seqN(0,2)));
+        //Retrieving sdf values of training points from Octree//
+        Eigen::MatrixXf pseudo_sdf_data = retrieve_sdf(volume_._map_index, X_m);
+        Eigen::MatrixXf sdf_data = pseudo_sdf_data(Eigen::seq(4, Eigen::placeholders::last, 9), Eigen::placeholders::all);
+        std::cout << "\n+++++++++++++++ retrieved sdf of training and pseudo points +++++++++++++\n";
+        //sdf_data =[ sdf_values for training points,  their corresponding occurences 'm' ]
+        //sdf_data =[ sdf_values for pseudo points,  their corresponding occurences 'm_pseudo' ]
+        D.push_back(sdf_data.col(0));
+        D.push_back(pseudo_sdf_data.col(0));
+
+        //D = {X_hit, X_m, F_train,F_m}
+
+        auto tic = std::chrono::high_resolution_clock::now();
+        // Eigen::MatrixXf X_test = gen_test_pts(map_size_, voxel_size_);
+        Eigen::MatrixXf X_test = gen_test_pts(map_size_, map_res_);
+        Eigen::MatrixXf X_t = X_test(Eigen::placeholders::all, Eigen::seq(0, 1));
+        std::cout << "====== test points generated =======\n";
+        SparseGp sgp;
+        sgp.sparse_posterior(D, X_t);
+        /**
+         *  D = {X_test, mu_t}
+         */
+        //accumulate pts for which sdf vals were predicted in one prediction cycle
+        Eigen::MatrixXf  X_pred_temp = X_pred;
+        X_pred.resize(X_pred_temp.rows() + D.at(0).rows(),Eigen::NoChange);
+        X_pred << X_pred_temp, D.at(0);
+        //accumulate sdf vals predicted in one prediction cycle
+        Eigen::VectorXf  sdf_temp = sdf_pred;
+        sdf_pred.resize(sdf_temp.rows() + D.at(1).rows());
+        sdf_pred << sdf_temp,D.at(1);  
+        //accumulate latest odom  
+        Eigen::MatrixXf  odom_vals_temp = odom_vals;
+        odom_vals.resize(odom_vals_temp.rows() + 1,Eigen::NoChange);
+        odom_vals << odom_vals_temp,curr_odom_(Eigen::seq(0,1)).transpose();
+    }
+    
+    E.push_back(X_pred);
+    E.push_back(sdf_pred);
+    E.push_back(odom_vals);
+    auto toc = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(toc - tic);
+    std::cout << "\n==============PREDICTION DONE in "<<duration.count() << " seconds========\n";
+    slam::visualize(E);
+
+}
 
 bool slam::mapNext()
 {
@@ -234,7 +362,8 @@ bool slam::mapNext()
         newPose.block(0, 0, 3, 3) = Rz * Ry * Rx;
         newPose.block(0, 3, 3, 1) = tr;
         agentT_.setPose(newPose);
-        std::this_thread::sleep_for (std::chrono::milliseconds(250));
+        // std::this_thread::sleep_for (std::chrono::milliseconds(250));
+        curr_odom_ = vals;
 
     }
 
@@ -335,88 +464,23 @@ bool slam::mapNext()
         
 
         //collect training points for prediction
-        unsigned int prev_training_size =  (update_count_ % predict_cycle_) == 1 ? 0:X_train_.rows();
-        Eigen::MatrixXf X_m_filtered = X_m(Eigen::seq(0,Eigen::placeholders::last,filter_training_),Eigen::placeholders::all); 
-        X_train_.resize(prev_training_size + X_m_filtered.rows(),Eigen::NoChange);
-        std::cout<<"for update count "<<update_count_<<" training points increased from "<<prev_training_size<<" to "<<X_train_.rows()<<'\n';
-        X_train_.block(prev_training_size,0,X_m_filtered.rows(),X_m_filtered.cols()) =  X_m_filtered;
-
+        // unsigned int prev_training_size =  (update_count_ % predict_cycle_) == 1 ? 0:X_train_.rows();
+        // Eigen::MatrixXf X_m_filtered = X_m(Eigen::seq(0,Eigen::placeholders::last,filter_training_),Eigen::placeholders::all); 
+        Eigen::MatrixXf X_train_filtered = X_train_; 
+        X_train_.resize(X_train_filtered.rows() + X_m.rows(),Eigen::NoChange);
+        std::cout<<"for update count "<<update_count_<<" training points increased from "<<X_train_filtered.rows()
+                    <<" to "<<X_train_.rows()<<'\n';
+        // X_train_.block(X_train_filtered,0,X_m.rows(),X_m.cols()) =  X_m;
+        X_train_ << X_train_filtered, X_m;
         // register training points in D vector for prediction
         if (update_count_ % predict_cycle_ == 0)
         {    
             //@@@@@@@@@@@@@@ PREDICTION @@@@@@@@@@@@@
-            std::vector<Eigen::MatrixXf> D;
-            D.push_back(X_train_(Eigen::placeholders::all, Eigen::seq(0, 1)));
-
-            // TODO : Data centering/Averaging - does not affect TSDF posterior\\
-
-
-            //@@@@@@@@@@@@@@@@@ USING SPARSE PSEUDO POINT GAUSSIAN PROCESS @@@@@@@@@@@@@
-            // Storing pseudo points
-            /*
-            D.push_back(X_m(Eigen::placeholders::all,Eigen::seqN(0,2)));
-            //Retrieving sdf values of training points from Octree//
-            Eigen::MatrixXf pseudo_sdf_data = retrieve_sdf(volume_._map_index, X_m);
-            Eigen::MatrixXf sdf_data = pseudo_sdf_data(Eigen::seq(4, Eigen::placeholders::last, 9), Eigen::placeholders::all);
-            std::cout << "\n+++++++++++++++ retrieved sdf of training and pseudo points +++++++++++++\n";
-            //sdf_data =[ sdf_values for training points,  their corresponding occurences 'm' ]
-            //sdf_data =[ sdf_values for pseudo points,  their corresponding occurences 'm_pseudo' ]
-            D.push_back(sdf_data.col(0));
-            D.push_back(pseudo_sdf_data.col(0));
-
-            //D = {X_hit, X_m, F_train,F_m}
-
-            auto tic = std::chrono::high_resolution_clock::now();
-            // Eigen::MatrixXf X_test = gen_test_pts(map_size_, voxel_size_);
-            Eigen::MatrixXf X_test = gen_test_pts(map_size_, map_res_);
-            Eigen::MatrixXf X_t = X_test(Eigen::placeholders::all, Eigen::seq(0, 1));
-            std::cout << "====== test points generated =======\n";
-            SparseGp sgp;
-            sgp.sparse_posterior(D, X_t);
-            //@@@@@@@@@@@@@@@@@ USING SPARSE PSEUDO POINT GAUSSIAN PROCESS @@@@@@@@@@@@@
-            */
-            
-            //@@@@@@@@@@@@@@@@@ USING Precision Matrix Z in GAUSSIAN PROCESS @@@@@@@@@@@@@
-            /**<Retrieving sdf values of training points from Octree*/
-            
-            Eigen::MatrixXf sdf_data = retrieve_sdf(volume_._map_index, X_train_);
-            std::cout << "\n+++++++++++++++ retrieved sdf of "<<X_train_.rows()<<" training points +++++++++++++\n";
-            // 
-            // sdf_data =[ sdf_values for accumulated training points,  their corresponding occurences 'm' ]
-            // for(unsigned int i=0;i<X_train_.rows();i++){
-            //     std::cout<<"pt: "<<X_train_.row(i).transpose()<<'\t'<<"sdf:"<<sdf_data(i,0)<<'\n';
-            // }
-            D.push_back(sdf_data.col(0));
-            D.push_back(sdf_data.col(1));
-            
-            //D = {X_train_, F_train, m_train}
-
-            auto tic = std::chrono::high_resolution_clock::now();
-            Eigen::MatrixXf X_test = slam::gen_test_pts(volume_._map_index,X_train_);
-            Eigen::MatrixXf X_t = X_test(Eigen::placeholders::all, Eigen::seq(0, 1));
-            SparseGp sgp;
-
-            //D = {X_train_, F_train, m_train}
-            sgp.posterior(D, X_t);
-            //@@@@@@@@@@@@@@@@@ USING Precision Matrix Z in GAUSSIAN PROCESS @@@@@@@@@@@@@
-            
-            /**
-             *  D = {X_test, mu_t}
-             */
-            slam::visualize(D);
-
-            
-            auto toc = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::seconds>(toc - tic);
-            std::cout << "\n==============PREDICTION DONE "<<"in "<<duration.count() << "seconds========\n";
-
+            slam::predict(volume_._map_index);
         }
         map_pub.update_map(ros_map_);
-        std::this_thread::sleep_for (std::chrono::seconds(2));
-
-        
+        std::this_thread::sleep_for(std::chrono::seconds(2));
         update_count_++;
-
         
         // const unsigned block_scale = log2(volume_._size) - se::math::log2_const(se::VoxelBlock<FieldType>::side);
         // const float inversevoxel_size_ = 1/voxel_size_;
