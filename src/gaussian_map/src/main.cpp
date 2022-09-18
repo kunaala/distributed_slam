@@ -1,7 +1,7 @@
 #include "gaussian_map/slam.h"
 
 int main(int argc, char** argv){
-  Eigen::Vector3f vol_res{1024,1024, 1024}; /**<No of voxels per edge in volume*/
+  Eigen::Vector3f vol_res{1024 ,1024, 1024}; /**<No of voxels per edge in volume*/
   Eigen::Vector3i vol_dim{300,300,300};
   std::string datafile = "intel.gfs.log";
   float pseudo_grid_res = 0.2, trunc_band=1.5;

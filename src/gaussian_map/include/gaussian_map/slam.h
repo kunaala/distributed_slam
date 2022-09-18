@@ -39,6 +39,7 @@ class slam {
     protected:
         Eigen::Vector3f volume_resolution_;
         Eigen::Vector3i volume_dimension_;
+        unsigned int num_vox_per_pt_;
         std::vector<struct pointVals<se::key_t>> allocation_list_;
         std::vector<struct pointVals<se::key_t>> prev_alloc_list_;
         std::vector<struct pointVals<se::key_t>> unfiltered_alloc_list_;
@@ -107,7 +108,7 @@ class slam {
         float map_res_ = 0.1f;
         unsigned int blockSide_;
         std::pair<unsigned int,unsigned int> map_size_ = std::make_pair(300,300); 
-        unsigned int predict_cycle_ = 3;
+        unsigned int predict_cycle_ = 90;
         unsigned int filter_training_ = 2;
         std::string fname_ = "map_ros.txt";
         std::vector<int8_t> ros_map_;

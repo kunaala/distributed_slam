@@ -36,8 +36,10 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, Hash
 #else
     unsigned int voxelCount=0;
     unsigned int oldCount=0;
+    unsigned int negVoxelCount =0;
 #endif
 #pragma omp parallel for
+    std::cout<<"\n=============== Building allocation list=================\n";
     for(int i=0;i<num_pts;i++) {
         Eigen::Vector3i voxel;
 
@@ -67,7 +69,6 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, Hash
                     //     allocationList[idx].typeAlloc = 0;
                     // }
                     // else{
-                    //     std::cout<<"HHahahahahahhahahahahahahahahahahhahaha\n";
                     //     allocationList[idx].typeAlloc = 1;
                     // }
                 }
@@ -82,9 +83,15 @@ unsigned int buildAllocationList(HashType* allocationList, size_t reserved, Hash
                 n->active(true);
             }
         }
+        else {
+            // std::cout<<"unable to allocate voxel: "<<voxelScaled<<'\n';
+            negVoxelCount++;
+        }
+
     }
     prev_alloc_size = oldCount;
     const unsigned int written = voxelCount;
+    std::cout<<"number of unallocated voxels: "<<negVoxelCount<<" out of "<<num_pts<<'\n';
     return written >= reserved ? reserved : written;
 }
 #endif

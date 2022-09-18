@@ -13,6 +13,8 @@ slam::slam(const Eigen::Vector3f vol_res, const Eigen::Vector3i vol_dim, std::st
     volume_ = Volume<FieldType>(volume_resolution_.x(), volume_dimension_.x(), discrete_vol_ptr_.get());
     voxel_size_ = volume_._dim / volume_._size;
     blockSide_ = (volume_._map_index)->blockSide;
+    // unsigned int num_vox_per_pt = volume_._dim/((se::VoxelBlock<FieldType>::side)*voxel_size_);
+    num_vox_per_pt_ = 1;
     ros_map_.resize(map_size_.first/map_res_ * map_size_.second/map_res_);
     std::fill(ros_map_.begin(),ros_map_.end(),-1);
 
@@ -34,8 +36,6 @@ Eigen::MatrixXf slam::retrieve_sdf(se::Octree<FieldType> *map_index, Eigen::Matr
     Eigen::Vector3f voxelScaled;
     Eigen::Vector3i voxel;
     float inverse_voxel_size = 1.f/voxel_size_;
-    Eigen::Vector3i exception_v;
-    exception_v << 0,0,0; 
     // std::cout<<"X_train:"<<X_train_<<'\n';
     for (unsigned int i = 0; i < voxelPos.rows(); i++)
     {
@@ -384,10 +384,8 @@ bool slam::mapNext()
         std::vector<float> pseudo_sdf_vals = temp.second;
 
         /**<Allocation in Octree begins*/
-        // unsigned int num_vox_per_pt = volume_._dim/((se::VoxelBlock<FieldType>::side)*voxel_size_);
-        unsigned int num_vox_per_pt = 1;
         // Estimating number of blocks to be allocated per LiDAR scan
-        size_t total = num_vox_per_pt * X_hit.rows() * num_pseudo_pts_;
+        size_t total = num_vox_per_pt_ * X_hit.rows() * num_pseudo_pts_;
         // reserve memory in allocation lists
         allocation_list_.reserve(total);
         unfiltered_alloc_list_.reserve(total);
@@ -400,6 +398,17 @@ bool slam::mapNext()
         allocated_ = buildAllocationList(allocation_list_.data(), allocation_list_.capacity(), prev_alloc_list_.data(),
                                                      pseudo_sdf_vals.data(), X_m, *volume_._map_index, X_hit.rows() * num_pseudo_pts_,
                                                      prev_alloc_size_, volume_._size, voxel_size_, 2 * mu_);
+        // std::cout<<'[';
+        // for(unsigned int i=0;i<allocated_;i++){
+        //     std::cout<<allocation_list_[i].pt.transpose()<<'\t';
+        // }
+        // std::cout<<"]\n";
+
+        // std::cout<<'[';
+        // for(unsigned int i=0;i<prev_alloc_size_;i++){
+        //     std::cout<<prev_alloc_list_[i].pt.transpose()<<'\t';
+        // }
+        // std::cout<<"]\n";
 
         /**<sort blocks in allocation list*/
         #if defined(_OPENMP) && !defined(__clang__)
@@ -426,7 +435,7 @@ bool slam::mapNext()
             unfiltered_alloc_list_[i] = allocation_list_[i];
         }
 
-        /**< Filters ancestors to seperate leaves from internal nodes and root*/
+        /**< Filters ancestors to separate leaves from internal nodes and root*/
         int prev_num_elem = se::algorithms::filter_ancestors(prev_alloc_list_.data(), prev_alloc_size_, log2(volume_._size),
                                                              prev_keycount_per_block_.data());
         int num_elem = se::algorithms::filter_ancestors(allocation_list_.data(), allocated_, log2(volume_._size),
@@ -456,10 +465,10 @@ bool slam::mapNext()
                                     num_elem, prev_num_elem, prev_alloc_size_ - prev_num_elem);
 
         std::cout << "\n==============UPDATION DONE ====================================\n";
-        std::cout << "total number of new block points: " << allocated_ << "\n";
-        std::cout << "new blocks to be allocated: " << num_elem << "\n";
-        std::cout << "Prev num block pts: " << prev_alloc_size_ << "\n";
-        std::cout << "prev num blocks to be allocated: " << prev_num_elem << "\n";
+        std::cout << "total number of new block points: " << allocated_<<'\n';
+        std::cout << "new blocks to be allocated: " << num_elem << '\n';
+        std::cout << "Prev num block pts: " << prev_alloc_size_ << '\n';
+        std::cout << "prev num blocks to be allocated: " << prev_num_elem << '\n';
         std::cout << "\n==================================================\n";
         
 
