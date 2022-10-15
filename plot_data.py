@@ -6,7 +6,7 @@ mu = 1.5
 def convert_rgb(sdf_val):
     return max(-mu,min((sdf_val*255)/(2*mu),mu))
 
-with open("21_map_ros.txt",'r') as f:
+with open("best_maps/block_wise/90_map_ros.txt",'r') as f:
 # with open("best_maps/cumulated/45_map_ros.txt",'r') as f:
 # with open("best_maps/cumulated/66_map_ros.txt",'r') as f:
     lines = f.readlines()
